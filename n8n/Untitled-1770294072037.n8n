@@ -1,0 +1,74 @@
+{
+  "updatedAt": "2026-02-05T13:06:19.129Z",
+  "createdAt": "2026-02-05T12:21:12.304Z",
+  "id": "EMPERbAoGze2FZYq",
+  "name": "Untitled-1770294072037",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "22cc1e7e-4dd6-4ac1-bb20-b9676359bb1b",
+  "activeVersionId": null,
+  "versionCounter": 14,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-02-05T12:21:12.309Z",
+      "createdAt": "2026-02-05T12:21:12.309Z",
+      "role": "workflow:owner",
+      "workflowId": "EMPERbAoGze2FZYq",
+      "projectId": "8Dv5vhrvFaLtie1u",
+      "project": {
+        "updatedAt": "2026-02-05T11:12:31.075Z",
+        "createdAt": "2026-02-05T11:11:33.220Z",
+        "id": "8Dv5vhrvFaLtie1u",
+        "name": "Mario Morera <moreraescobar@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "9ff14152-0992-4e9b-b7ee-cc36f53e7094",
+        "projectRelations": [
+          {
+            "updatedAt": "2026-02-05T11:11:33.220Z",
+            "createdAt": "2026-02-05T11:11:33.220Z",
+            "userId": "9ff14152-0992-4e9b-b7ee-cc36f53e7094",
+            "projectId": "8Dv5vhrvFaLtie1u",
+            "user": {
+              "updatedAt": "2026-02-05T12:52:07.531Z",
+              "createdAt": "2026-02-05T11:11:33.089Z",
+              "id": "9ff14152-0992-4e9b-b7ee-cc36f53e7094",
+              "email": "moreraescobar@gmail.com",
+              "firstName": "Mario",
+              "lastName": "Morera",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2026-02-05T11:12:53.878Z",
+                "personalization_survey_n8n_version": "2.4.6"
+              },
+              "settings": {
+                "userActivated": false,
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-02-05",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

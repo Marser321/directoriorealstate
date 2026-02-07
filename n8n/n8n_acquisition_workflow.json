@@ -1,0 +1,255 @@
+{
+    "name": "Real Estate Acquisition Machine - Sniper (Groq Edition)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 9 * * 1"
+                        }
+                    ]
+                }
+            },
+            "id": "e0d0c350-trigger-0001",
+            "name": "Cron Scheduler",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpQueryAuth",
+                "options": {},
+                "queryParameters": {
+                    "parameter": [
+                        {
+                            "name": "query",
+                            "value": "Inmobiliarias en Punta del Este"
+                        },
+                        {
+                            "name": "key",
+                            "value": "YOUR_GOOGLE_API_KEY"
+                        }
+                    ]
+                }
+            },
+            "id": "e0d0c350-search-0002",
+            "name": "Search Google Maps",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "notes": "Replace 'Inmobiliarias en Punta del Este' with your target query."
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "results"
+            },
+            "id": "e0d0c350-split-0003",
+            "name": "Split Results",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ !$json.website && $json.rating < 3 }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "e0d0c350-filter-0004",
+            "name": "Filter: Deficient",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "notes": "Pass if NO website OR Low Rating"
+        },
+        {
+            "parameters": {
+                "tableId": "agencies",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "name",
+                            "value": "={{ $json.name }}"
+                        },
+                        {
+                            "fieldId": "slug",
+                            "value": "={{ ($json.name).toLowerCase().replace(/[^a-z0-9]/g, '-') }}"
+                        },
+                        {
+                            "fieldId": "address",
+                            "value": "={{ $json.formatted_address }}"
+                        },
+                        {
+                            "fieldId": "status",
+                            "value": "lead"
+                        },
+                        {
+                            "fieldId": "source_url",
+                            "value": "google_maps"
+                        },
+                        {
+                            "fieldId": "tier_subscription",
+                            "value": "basic"
+                        },
+                        {
+                            "fieldId": "is_verified",
+                            "value": false
+                        }
+                    ]
+                }
+            },
+            "id": "e0d0c350-save-0004b",
+            "name": "Save Agency Lead",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                980,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameter": [
+                        {
+                            "name": "model",
+                            "value": "llama-3.3-70b-versatile"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"user\", \"content\": \"Analiza esta inmobiliaria: {{ $json.name }} en {{ $json.formatted_address }}. \\nRating: {{ $json.rating }}.\\nNo tienen website o es deficiente.\\n\\nGenera 3 puntos cortos y directos (bullets) sobre por qué están perdiendo clientes frente a la competencia digital. Sé empático pero profesional. Tono de 'Consultor Senior'.\\nSalida solo los 3 bullets.\"}]"
+                        }
+                    ]
+                }
+            },
+            "id": "e0d0c350-ai-0005",
+            "name": "Groq Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1100,
+                280
+            ],
+            "notes": "Uses Groq (Llama 3)"
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "send",
+                "sendTo": "={{ $json.contact_email || 'info@' + ($json.name).toLowerCase().replace(' ', '') + '.com' }}",
+                "subject": "Tu perfil en Google Maps podría vender más",
+                "message": "=Hola,\n\nVi tu inmobiliaria en Google Maps y noté algo que te está costando clientes.\n\n{{ $json.choices[0].message.content }}\n\nHe creado una pre-visualización de cómo se vería tu sitio web premium en mi directorio. Sin costo.\n\n¿Te la envío?\n\nSaludos,\nMario"
+            },
+            "id": "e0d0c350-email-0006",
+            "name": "Send Cold Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2,
+            "position": [
+                1350,
+                300
+            ],
+            "notes": "Replace generic email logic with real extraction if available."
+        }
+    ],
+    "connections": {
+        "Cron Scheduler": {
+            "main": [
+                [
+                    {
+                        "node": "Search Google Maps",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search Google Maps": {
+            "main": [
+                [
+                    {
+                        "node": "Split Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Results": {
+            "main": [
+                [
+                    {
+                        "node": "Filter: Deficient",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter: Deficient": {
+            "main": [
+                [
+                    {
+                        "node": "Save Agency Lead",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save Agency Lead": {
+            "main": [
+                [
+                    {
+                        "node": "Groq Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Send Cold Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

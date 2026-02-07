@@ -1,0 +1,161 @@
+{
+    "name": "Enriquecimiento de Leads Inmobiliarios (Groq Edition)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "supabase-new-property",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                460,
+                340
+            ],
+            "webhookId": "supabase-new-property"
+        },
+        {
+            "parameters": {
+                "url": "https://maps.googleapis.com/maps/api/geocode/json",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "queryAuth",
+                "options": {},
+                "queryParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "address",
+                            "value": "={{ $json.body.record.address }} {{ $json.body.record.city }}"
+                        },
+                        {
+                            "name": "key",
+                            "value": "YOUR_GOOGLE_MAPS_API_KEY"
+                        }
+                    ]
+                }
+            },
+            "id": "google-maps",
+            "name": "Google Maps Enrichment",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                680,
+                340
+            ],
+            "credentials": {
+                "queryAuth": {
+                    "id": "YOUR_GOOGLE_MAPS_CREDENTIALS_ID",
+                    "name": "Google Maps Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer YOUR_GROQ_API_KEY"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "llama3-70b-8192"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"user\", \"content\": \"Actúa como un copywriter experto en Real Estate de lujo para el mercado de Punta del Este. \\n\\nEscribe una descripción persuasiva y emocional ('Vibe Coding style') para esta propiedad:\\n\\nTítulo: {{ $json.body.record.title }}\\nUbicación: {{ $json.body.record.location }}\\nPrecio: {{ $json.body.record.price }}\\nCaracterísticas: {{ $json.body.record.features }}\\n\\nDatos de zona (Google Maps): {{ $node[\"Google Maps Enrichment\"].json[\"results\"][0][\"formatted_address\"] }}\\n\\nLa descripción debe tener máximo 2 párrafos, usar emojis sutiles y enfocar en el estilo de vida.\"}]"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "groq-copywriter",
+            "name": "Groq Copywriter",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                900,
+                340
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "YOUR_GROQ_CREDENTIALS_ID",
+                    "name": "Groq API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "table": "properties",
+                "operation": "update",
+                "matchColumns": [
+                    "id"
+                ],
+                "updateKey": "id",
+                "columns": "description, location_data",
+                "options": {}
+            },
+            "id": "update-supabase",
+            "name": "Update Property",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                340
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_CREDENTIALS_ID",
+                    "name": "Supabase account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Google Maps Enrichment",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Maps Enrichment": {
+            "main": [
+                [
+                    {
+                        "node": "Groq Copywriter",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq Copywriter": {
+            "main": [
+                [
+                    {
+                        "node": "Update Property",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

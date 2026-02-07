@@ -1,0 +1,248 @@
+{
+    "name": "Outreach_Dispatcher",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 5
+                        }
+                    ]
+                }
+            },
+            "name": "Cron Trigger",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "limit": 10,
+                "filters": {
+                    "conditions": [
+                        {
+                            "key": "status",
+                            "value": "new"
+                        }
+                    ]
+                }
+            },
+            "name": "Get New Leads",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-cred-id",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "dataType": "string",
+                "value1": "={{ $json.rental_type }}",
+                "rules": {
+                    "rules": [
+                        {
+                            "value2": "temporal",
+                            "output": 0
+                        },
+                        {
+                            "value2": "anual",
+                            "output": 1
+                        }
+                    ]
+                },
+                "fallbackOutput": 1
+            },
+            "name": "Switch Rental Type",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "message_script",
+                            "value": "={{ 'Hola ' + ($json.owner_name || 'Propietario') + ', vi tu alquiler temporal. Calculé que podrías ahorrarte aprox ' + ($json.currency || '$') + ($json.ahorro_estimado || '0') + ' al año en comisiones si recibes reservas directas. Estamos lanzando una plataforma de reservas directas sin costo para el anfitrión. ¿Te gustaría probarla?' }}"
+                        }
+                    ]
+                }
+            },
+            "name": "Script Temporal",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                750,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "message_script",
+                            "value": "={{ 'Hola ' + ($json.owner_name || 'Propietario') + ', vi tu propiedad en ' + ($json.neighborhood || 'tu zona') + '. Estoy armando un directorio premium sin comisiones para propietarios directos. Me gustaría incluir tu casa gratis para que tengas más visibilidad. ¿Te interesa?' }}"
+                        }
+                    ]
+                }
+            },
+            "name": "Script Anual",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                750,
+                450
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.evolution-api.com/message/sendText",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "number",
+                            "value": "={{ $json.owner_whatsapp || $json.owner_phone }}"
+                        },
+                        {
+                            "name": "text",
+                            "value": "={{ $json.message_script }}"
+                        }
+                    ]
+                }
+            },
+            "name": "WhatsApp Send (Evolution)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1000,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "evolution-api-cred",
+                    "name": "Evolution API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "operation": "update",
+                "updateKey": "id",
+                "columns": "status",
+                "values": {
+                    "status": "contacted"
+                }
+            },
+            "name": "Mark Contacted",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1250,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-cred-id",
+                    "name": "Supabase account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Cron Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Get New Leads",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get New Leads": {
+            "main": [
+                [
+                    {
+                        "node": "Switch Rental Type",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Switch Rental Type": {
+            "main": [
+                [
+                    {
+                        "node": "Script Temporal",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Script Anual",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Script Temporal": {
+            "main": [
+                [
+                    {
+                        "node": "WhatsApp Send (Evolution)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Script Anual": {
+            "main": [
+                [
+                    {
+                        "node": "WhatsApp Send (Evolution)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "WhatsApp Send (Evolution)": {
+            "main": [
+                [
+                    {
+                        "node": "Mark Contacted",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

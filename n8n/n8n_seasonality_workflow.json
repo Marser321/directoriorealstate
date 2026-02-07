@@ -1,0 +1,190 @@
+{
+    "name": "Seasonality Adjuster",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 6 1 3,12 *"
+                        }
+                    ]
+                }
+            },
+            "id": "cron-trigger",
+            "name": "Seasonal Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Determine season based on current month\nconst month = new Date().getMonth(); // 0-11\nconst season = (month >= 11 || month <= 2) ? 'summer' : 'winter';\n\nreturn [\n  {\n    json: {\n      season: season,\n      triggered_at: new Date().toISOString(),\n      description: month === 2 ? 'End of summer - switching to winter mode' : 'Start of summer - switching to summer mode'\n    }\n  }\n];"
+            },
+            "id": "determine-season",
+            "name": "Determine Season",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "vibe_scores",
+                "returnAll": true
+            },
+            "id": "fetch-vibe-scores",
+            "name": "Fetch Vibe Scores",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-credentials",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Seasonal modifiers for Punta del Este zones\nconst MODIFIERS = {\n  'La Barra': { summer: { noise: 75, nightlife: true }, winter: { noise: 25, nightlife: false } },\n  'José Ignacio': { summer: { noise: 40, nightlife: false }, winter: { noise: 10, nightlife: false } },\n  'Punta del Este': { summer: { noise: 85, nightlife: true }, winter: { noise: 35, nightlife: false } },\n  'Manantiales': { summer: { noise: 70, nightlife: true }, winter: { noise: 20, nightlife: false } },\n  'Montoya': { summer: { noise: 35, nightlife: false }, winter: { noise: 10, nightlife: false } },\n  'Punta Ballena': { summer: { noise: 25, nightlife: false }, winter: { noise: 10, nightlife: false } },\n};\n\nconst season = $('Determine Season').first().json.season;\nconst vibeScores = $('Fetch Vibe Scores').all();\nconst updates = [];\n\nfor (const score of vibeScores) {\n  const data = score.json;\n  \n  // Find matching zone modifiers\n  let modifiers = null;\n  for (const [zoneName, config] of Object.entries(MODIFIERS)) {\n    if (data.data_sources?.zone?.includes(zoneName)) {\n      modifiers = config[season];\n      break;\n    }\n  }\n  \n  if (modifiers) {\n    updates.push({\n      id: data.id,\n      noise_score: modifiers.noise,\n      nightlife: modifiers.nightlife,\n      season: season,\n      updated_at: new Date().toISOString()\n    });\n  }\n}\n\nreturn updates.map(u => ({ json: u }));"
+            },
+            "id": "calculate-updates",
+            "name": "Calculate Updates",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                850,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "vibe_scores",
+                "filterType": "string",
+                "filterString": "=id=eq.{{ $json.id }}",
+                "dataToSend": "defineBelow",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "noise_score",
+                            "fieldValue": "={{ $json.noise_score }}"
+                        },
+                        {
+                            "fieldId": "nightlife",
+                            "fieldValue": "={{ $json.nightlife }}"
+                        },
+                        {
+                            "fieldId": "season",
+                            "fieldValue": "={{ $json.season }}"
+                        },
+                        {
+                            "fieldId": "updated_at",
+                            "fieldValue": "={{ $json.updated_at }}"
+                        }
+                    ]
+                }
+            },
+            "id": "update-vibe-scores",
+            "name": "Update Vibe Scores",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-credentials",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\nconst season = $('Determine Season').first().json.season;\n\nreturn [{\n  json: {\n    success: true,\n    season: season,\n    updated_count: items.length,\n    completed_at: new Date().toISOString(),\n    message: `Seasonality adjustment complete: ${items.length} vibe scores updated to ${season} mode`\n  }\n}];"
+            },
+            "id": "summary",
+            "name": "Summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Seasonal Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Determine Season",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Determine Season": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Vibe Scores",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Vibe Scores": {
+            "main": [
+                [
+                    {
+                        "node": "Calculate Updates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Calculate Updates": {
+            "main": [
+                [
+                    {
+                        "node": "Update Vibe Scores",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Vibe Scores": {
+            "main": [
+                [
+                    {
+                        "node": "Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": []
+}

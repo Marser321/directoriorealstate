@@ -1,0 +1,231 @@
+{
+    "name": "Intelligent Lead Classification",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lead-classifier",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                250,
+                300
+            ],
+            "webhookId": "lead-classifier-webhook"
+        },
+        {
+            "parameters": {
+                "resource": "chat",
+                "operation": "complete",
+                "model": "={{ 'gpt-4o-mini' }}",
+                "messages": {
+                    "values": [
+                        {
+                            "role": "system",
+                            "content": "Analiza el siguiente texto de un anuncio inmobiliario. Tu objetivo es clasificar al vendedor.\n\nReglas de Detección:\n1. Inmobiliaria: Si menciona 'honorarios', 'comisión', 'horario de oficina', tiene nombre de empresa, o gestiona múltiples propiedades.\n2. Dueño Directo: Si dice 'trato directo', 'dueño vende', 'sin comisión', 'sin intermediarios'.\n3. Indeterminado: Si no hay información suficiente.\n\nSalida Requerida (JSON puro):\n{\n  \"tipo_vendedor\": \"Dueño\" | \"Inmobiliaria\" | \"Indeterminado\",\n  \"confianza\": 0-100,\n  \"razon\": \"Breve explicación\"\n}"
+                        },
+                        {
+                            "role": "user",
+                            "content": "=Titulo: {{ $json.body.title }}\nDescripcion: {{ $json.body.description }}"
+                        }
+                    ]
+                },
+                "jsonOutput": true
+            },
+            "id": "openai-classifier",
+            "name": "OpenAI Classifier",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "openai-credentials",
+                    "name": "OpenAI account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "search",
+                "operation": "google",
+                "options": {},
+                "q": "=site:mercadolibre.com.uy OR site:infocasas.com.uy {{ $('Webhook').item.json.body.phone }}",
+                "google_domain": "google.com.uy",
+                "hl": "es",
+                "gl": "uy"
+            },
+            "id": "search-enrichment",
+            "name": "SerpApi Enrichment",
+            "type": "n8n-nodes-serpapi.serpApi",
+            "typeVersion": 1,
+            "position": [
+                750,
+                300
+            ],
+            "credentials": {
+                "serpApi": {
+                    "id": "serpapi-credentials",
+                    "name": "SerpApi account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const aiResult = $('OpenAI Classifier').item.json.message.content;\nconst searchResults = $('SerpApi Enrichment').item.json.organic_results || [];\n\nlet parsedAi;\ntry {\n  parsedAi = typeof aiResult === 'string' ? JSON.parse(aiResult) : aiResult;\n} catch (e) {\n  parsedAi = { tipo_vendedor: 'Indeterminado', confianza: 0, razon: 'Error parsing AI output' };\n}\n\n// Enrichment Logic: If phone appears in many listings, override to Inmobiliaria\nlet finalType = parsedAi.tipo_vendedor;\nconst listingCount = searchResults.length;\n\nif (listingCount > 3 && finalType === 'Dueño') {\n  finalType = 'Inmobiliaria';\n  parsedAi.razon += ' [Overridden by Enrichment: Phone found in ' + listingCount + ' listings]';\n}\n\nreturn {\n  json: {\n    ...parsedAi,\n    original_title: $('Webhook').item.json.body.title,\n    original_description: $('Webhook').item.json.body.description,\n    contact_phone: $('Webhook').item.json.body.phone,\n    listing_count_found: listingCount,\n    final_classification: finalType\n  }\n};"
+            },
+            "id": "logic-processing",
+            "name": "Logic & Cleanup",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "dataType": "string",
+                "value1": "={{ $json.final_classification }}",
+                "rules": {
+                    "rules": [
+                        {
+                            "value2": "Dueño",
+                            "output": 0
+                        },
+                        {
+                            "value2": "Inmobiliaria",
+                            "output": 1
+                        }
+                    ]
+                },
+                "fallbackOutput": 1
+            },
+            "id": "router-switch",
+            "name": "Switch Route",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "row",
+                "operation": "create",
+                "tableId": "={{ 'leads_propietarios' }}",
+                "columns": "title, description, phone, classification, confidence, reason, source_url",
+                "options": {}
+            },
+            "id": "supabase-owner",
+            "name": "Supabase (Owner)",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1550,
+                200
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-credentials",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "sheet",
+                "operation": "append",
+                "sheetId": "={{ '1aBcDeFgHiJkLmNoPqRsTuVwXyZ' }}",
+                "range": "Sheet1!A:F",
+                "options": {}
+            },
+            "id": "sheets-agency",
+            "name": "Google Sheets (Agency)",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                1550,
+                450
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-credentials",
+                    "name": "Google Sheets account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "OpenAI Classifier",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Classifier": {
+            "main": [
+                [
+                    {
+                        "node": "SerpApi Enrichment",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "SerpApi Enrichment": {
+            "main": [
+                [
+                    {
+                        "node": "Logic & Cleanup",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Logic & Cleanup": {
+            "main": [
+                [
+                    {
+                        "node": "Switch Route",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Switch Route": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase (Owner)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Google Sheets (Agency)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

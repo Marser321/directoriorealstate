@@ -1,0 +1,194 @@
+{
+    "name": "Seasonal_Rentals_Scraper",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hours": 12
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "1a2b3c4d-5e6f-7890-1234-567890abcdef"
+        },
+        {
+            "parameters": {
+                "url": "https://api.apify.com/v2/acts/airbnb-scraper/runs",
+                "method": "POST",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer YOUR_APIFY_TOKEN"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "locationQuery",
+                            "value": "Punta del Este, Uruguay"
+                        },
+                        {
+                            "name": "maxListings",
+                            "value": "50"
+                        }
+                    ]
+                }
+            },
+            "name": "Apify Source",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                450,
+                300
+            ],
+            "id": "2b3c4d5e-6f7g-8901-2345-678901abcdef"
+        },
+        {
+            "parameters": {
+                "url": "https://serpapi.com/search",
+                "options": {
+                    "response": {
+                        "response": "json"
+                    }
+                },
+                "queryParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "q",
+                            "value": "={{$json.host_name}} instagram real estate"
+                        },
+                        {
+                            "name": "api_key",
+                            "value": "YOUR_SERPAPI_KEY"
+                        }
+                    ]
+                }
+            },
+            "name": "Find Socials",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                650,
+                300
+            ],
+            "id": "3c4d5e6f-7g8h-9012-3456-789012bcdefa"
+        },
+        {
+            "parameters": {
+                "functionCode": "// Calculate estimated savings\n// Assumptions: Airbnb fee ~15%\nconst nightlyPrice = items[0].json.price.amount || 100;\nconst avgNights = 10; // avg stay\nconst totalBooking = nightlyPrice * avgNights;\nconst savings = totalBooking * 0.15;\n\nreturn items.map(item => {\n  return {\n    json: {\n      ...item.json,\n      ahorro_estimado: savings,\n      owner_social_url: item.json.organic_results?.[0]?.link || ''\n    }\n  }\n});"
+            },
+            "name": "Opportunity Calc",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "id": "4d5e6f7g-8h9i-0123-4567-890123cdefab"
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "columnsUi": {
+                    "mappingMode": "defineBelow",
+                    "valueMapping": {
+                        "values": [
+                            {
+                                "column": "source",
+                                "value": "airbnb_scraper"
+                            },
+                            {
+                                "column": "rental_type",
+                                "value": "temporal"
+                            },
+                            {
+                                "column": "ahorro_estimado",
+                                "value": "={{$json.ahorro_estimado}}"
+                            },
+                            {
+                                "column": "owner_social_url",
+                                "value": "={{$json.owner_social_url}}"
+                            },
+                            {
+                                "column": "description",
+                                "value": "={{$json.name}}"
+                            },
+                            {
+                                "column": "original_url",
+                                "value": "={{$json.url}}"
+                            }
+                        ]
+                    }
+                }
+            },
+            "name": "Save Prospect",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                300
+            ],
+            "id": "5e6f7g8h-9i0j-1234-5678-901234defabc"
+        }
+    ],
+    "connections": {
+        "Schedule": {
+            "main": [
+                [
+                    {
+                        "node": "Apify Source",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Apify Source": {
+            "main": [
+                [
+                    {
+                        "node": "Find Socials",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Find Socials": {
+            "main": [
+                [
+                    {
+                        "node": "Opportunity Calc",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Opportunity Calc": {
+            "main": [
+                [
+                    {
+                        "node": "Save Prospect",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

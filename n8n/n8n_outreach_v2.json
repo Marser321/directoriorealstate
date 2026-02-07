@@ -1,0 +1,440 @@
+{
+    "name": "Real Estate Outreach - Personalized by Rental Type",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 15
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-cron-001",
+            "name": "Every 15 Minutes",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "outreach_queue",
+                "returnAll": false,
+                "limit": 5,
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "status",
+                            "condition": "eq",
+                            "keyValue": "pending"
+                        },
+                        {
+                            "keyName": "scheduled_for",
+                            "condition": "lte",
+                            "keyValue": "={{ $now.toISO() }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-queue-002",
+            "name": "Get Pending Outreach",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                400,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "prospect_properties",
+                "returnAll": false,
+                "limit": 1,
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $json.lead_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-lead-003",
+            "name": "Get Lead Details",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                600,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// ==================================================\n// TEMPLATE SELECTOR FOR PERSONALIZED OUTREACH\n// ==================================================\n\nconst lead = $input.first().json;\nconst queueItem = $('Get Pending Outreach').first().json;\n\n// Templates personalizados por tipo de renta/venta\nconst templates = {\n  anual: {\n    initial: `Hola! 👋 Vi tu propiedad en {{address}} para alquiler anual.\n\nSoy Mario, experto inmobiliario. Puedo ayudarte a conseguir inquilinos verificados (referencias laborales + garantía) SIN cobrar comisión.\n\n¿Te cuento cómo funciona? Solo toma 2 minutos.`,\n    \n    followup_1: `Hola de nuevo! 🏠 Seguí pensando en tu propiedad en {{address}}.\n\nTengo 3 familias buscando alquiler en la zona. ¿Te interesa que te pase sus perfiles? Sin compromiso.`,\n    \n    followup_2: `Último mensaje, lo prometo! 😊\n\nSolo quería ofrecerte fotos profesionales GRATIS para tu anuncio en {{address}}. Mejora mucho la respuesta.\n\n¿Cuándo podría pasar?`\n  },\n  \n  temporal: {\n    initial: `Hola! 🌴 Vi tu propiedad en {{address}} para alquiler por temporada.\n\nSoy Mario. Te ofrezco un paquete GRATIS: fotos HDR + video 360° + publicación en 5 plataformas.\n\n¿Cuándo podría pasar a conocer la propiedad?`,\n    \n    followup_1: `Hola! 📸 Vi que sigues con la propiedad en {{address}} disponible.\n\nLa temporada viene fuerte. Las propiedades con fotos profesionales se alquilan 3x más rápido.\n\n¿Te agendo una sesión gratis?`,\n    \n    followup_2: `Este es mi último intento 😅\n\nSolo ofrezco el paquete de fotos gratis a 5 propietarios por mes. Quedan 2 cupos.\n\n¿{{address}} podría ser uno?`\n  },\n  \n  venta: {\n    initial: `Hola! 🏠 Vi que vendés tu propiedad en {{address}} directamente. ¡Excelente decisión!\n\nSoy Mario, asesor inmobiliario. Tengo compradores activos buscando en la zona.\n\n¿Puedo enviarte 2-3 perfiles sin compromiso?`,\n    \n    followup_1: `Hola de nuevo! Vi que {{address}} sigue disponible.\n\nHice un análisis de mercado gratis: propiedades similares se vendieron entre $X y $Y en los últimos 60 días.\n\n¿Te interesa el reporte completo?`,\n    \n    followup_2: `Último mensaje! 🙏\n\nOfrezco valoración profesional + fotos HDR gratis para {{address}}.\n\nSin exclusividad, sin compromiso. Solo quiero ayudarte a vender más rápido.`\n  }\n};\n\n// Determinar tipo y etapa\nconst rentalType = lead.rental_type || 'venta';\nconst stage = queueItem.stage || 'initial';\n\n// Obtener template\nconst templateGroup = templates[rentalType] || templates.venta;\nconst template = templateGroup[stage] || templateGroup.initial;\n\n// Reemplazar placeholders\nconst message = template\n  .replace(/{{address}}/g, lead.address || 'tu propiedad')\n  .replace(/{{price}}/g, lead.listed_price || 'N/A');\n\nreturn {\n  json: {\n    lead_id: lead.id,\n    queue_id: queueItem.id,\n    rental_type: rentalType,\n    stage: stage,\n    generated_message: message,\n    whatsapp_number: lead.owner_whatsapp,\n    has_whatsapp: !!lead.owner_whatsapp\n  }\n};"
+            },
+            "id": "outreach-v2-template-004",
+            "name": "Generate Personalized Message",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                800,
+                300
+            ],
+            "notes": "Selects template based on rental_type and outreach stage"
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un copywriter experto en comunicación por WhatsApp para el mercado inmobiliario uruguayo. Tu trabajo es mejorar mensajes para que suenen naturales y genuinos, NO vendedores.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Mejora este mensaje de WhatsApp manteniendo la esencia pero haciéndolo más natural y conversacional. Máximo 400 caracteres. No uses emojis excesivos. Responde SOLO con el mensaje mejorado, sin explicaciones:\\n\\n{{ $json.generated_message }}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 300\n}",
+                "options": {}
+            },
+            "id": "outreach-v2-polish-005",
+            "name": "Groq: Polish Message",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1000,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "YOUR_GROQ_CREDENTIAL_ID",
+                    "name": "Groq API Key"
+                }
+            },
+            "notes": "AI polishes the template message"
+        },
+        {
+            "parameters": {
+                "jsCode": "const polishedMessage = $input.first().json.choices?.[0]?.message?.content || $('Generate Personalized Message').first().json.generated_message;\n\nconst previousData = $('Generate Personalized Message').first().json;\n\nreturn {\n  json: {\n    ...previousData,\n    final_message: polishedMessage.trim()\n  }\n};"
+            },
+            "id": "outreach-v2-merge-006",
+            "name": "Merge Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.has_whatsapp }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-check-007",
+            "name": "Has WhatsApp?",
+            "type": "n8n-nodes-base.filter",
+            "typeVersion": 2,
+            "position": [
+                1400,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.evolution-api.com/message/sendText/YOUR_INSTANCE",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"number\": \"{{ $json.whatsapp_number }}\",\n  \"text\": \"{{ $json.final_message }}\"\n}",
+                "options": {}
+            },
+            "id": "outreach-v2-send-008",
+            "name": "Send WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1600,
+                200
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "YOUR_EVOLUTION_CREDENTIAL_ID",
+                    "name": "Evolution API Key"
+                }
+            },
+            "notes": "Requires Evolution API instance"
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "outreach_queue",
+                "id": "={{ $json.queue_id }}",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "sent"
+                        },
+                        {
+                            "fieldId": "message_body",
+                            "fieldValue": "={{ $json.final_message }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-update-009",
+            "name": "Mark as Sent",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1800,
+                200
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "create",
+                "tableId": "outreach_log",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "lead_id",
+                            "fieldValue": "={{ $json.lead_id }}"
+                        },
+                        {
+                            "fieldId": "queue_id",
+                            "fieldValue": "={{ $json.queue_id }}"
+                        },
+                        {
+                            "fieldId": "channel",
+                            "fieldValue": "whatsapp"
+                        },
+                        {
+                            "fieldId": "direction",
+                            "fieldValue": "outbound"
+                        },
+                        {
+                            "fieldId": "content",
+                            "fieldValue": "={{ $json.final_message }}"
+                        },
+                        {
+                            "fieldId": "metadata",
+                            "fieldValue": "={{ JSON.stringify({ rental_type: $json.rental_type, stage: $json.stage }) }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-log-010",
+            "name": "Log Message",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2000,
+                200
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "outreach_queue",
+                "id": "={{ $json.queue_id }}",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "failed"
+                        },
+                        {
+                            "fieldId": "last_error",
+                            "fieldValue": "No WhatsApp number available"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-v2-fail-011",
+            "name": "Mark as Failed",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1600,
+                400
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            },
+            "notes": "When no WhatsApp available"
+        }
+    ],
+    "connections": {
+        "Every 15 Minutes": {
+            "main": [
+                [
+                    {
+                        "node": "Get Pending Outreach",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Pending Outreach": {
+            "main": [
+                [
+                    {
+                        "node": "Get Lead Details",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Lead Details": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Personalized Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Personalized Message": {
+            "main": [
+                [
+                    {
+                        "node": "Groq: Polish Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq: Polish Message": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Data": {
+            "main": [
+                [
+                    {
+                        "node": "Has WhatsApp?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has WhatsApp?": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Mark as Failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Mark as Sent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mark as Sent": {
+            "main": [
+                [
+                    {
+                        "node": "Log Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "id": "outreach",
+            "name": "outreach"
+        },
+        {
+            "id": "whatsapp",
+            "name": "whatsapp"
+        }
+    ]
+}

@@ -1,0 +1,343 @@
+{
+    "name": "Real Estate Sniper - FSBO Hunter (Groq Edition)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 8 * * *"
+                        }
+                    ]
+                }
+            },
+            "id": "sniper-trigger-001",
+            "name": "Daily Schedule",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://serpapi.com/search.json",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpQueryAuth",
+                "queryParameters": {
+                    "parameter": [
+                        {
+                            "name": "q",
+                            "value": "site:mercadolibre.com.uy \"dueño vende\" OR site:gallito.com.uy \"trato directo\""
+                        },
+                        {
+                            "name": "api_key",
+                            "value": "YOUR_SERPAPI_KEY"
+                        },
+                        {
+                            "name": "num",
+                            "value": "10"
+                        }
+                    ]
+                }
+            },
+            "id": "sniper-search-002",
+            "name": "Search FSBO",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "notes": "Uses SerpApi (Free Tier 100/mo) to scrape Google results"
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "organic_results"
+            },
+            "id": "sniper-split-003",
+            "name": "Split Results",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "model": "llama-3.3-70b-versatile",
+                "options": {}
+            },
+            "id": "sniper-groq-model-004",
+            "name": "Groq Chat Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+            "typeVersion": 1,
+            "position": [
+                840,
+                480
+            ],
+            "credentials": {
+                "groqApi": {
+                    "id": "YOUR_GROQ_CREDENTIAL_ID",
+                    "name": "Groq Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=Analiza este resultado de búsqueda inmobiliaria:\nTitulo: {{ $json.title }}\nSnippet: {{ $json.snippet }}\nLink: {{ $json.link }}\n\nExtrae en JSON:\n- is_fsbo: boolean (true si es dueño directo)\n- price: number (estimado, solo números)\n- address: string (o zona)\n- property_type: string (MANDATORY one of: 'casa', 'apartamento', 'terreno', 'local', 'ph', 'other')\n- contact_likely: boolean (si parece tener teléfono)"
+            },
+            "id": "sniper-chain-004b",
+            "name": "Basic LLM Chain",
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.4,
+            "position": [
+                850,
+                300
+            ],
+            "notes": "Using LangChain with Groq (Llama 3)"
+        },
+        {
+            "parameters": {
+                "jsCode": "const result = $input.first().json.text;\n\n// Limpiar bloque de código markdown si existe\nconst cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n  return { json: JSON.parse(cleanJson) };\n} catch (e) {\n  return { json: { error: 'Invalid JSON', raw: result } };\n}"
+            },
+            "id": "sniper-json-parse-004c",
+            "name": "Parse JSON",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.is_fsbo }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "sniper-filter-005",
+            "name": "Filter: Only FSBO",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "source",
+                            "value": "google_search"
+                        },
+                        {
+                            "fieldId": "original_url",
+                            "value": "={{ $('Split Results').item.json.link }}"
+                        },
+                        {
+                            "fieldId": "address",
+                            "value": "={{ $json.address }}"
+                        },
+                        {
+                            "fieldId": "listed_price",
+                            "value": "={{ $json.price }}"
+                        },
+                        {
+                            "fieldId": "status",
+                            "value": "new"
+                        },
+                        {
+                            "fieldId": "description",
+                            "value": "={{ $('Split Results').item.json.snippet }}"
+                        },
+                        {
+                            "fieldId": "quality_score",
+                            "value": "75"
+                        },
+                        {
+                            "fieldId": "property_type",
+                            "value": "={{ $json.property_type || 'other' }}"
+                        }
+                    ]
+                }
+            },
+            "id": "sniper-save-006",
+            "name": "Save Prospect",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1400,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "tableId": "properties",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "title",
+                            "value": "={{ $('Split Results').item.json.title }}"
+                        },
+                        {
+                            "fieldId": "slug",
+                            "value": "={{ $('Split Results').item.json.title.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + $json.price }}"
+                        },
+                        {
+                            "fieldId": "price",
+                            "value": "={{ $json.price || 0 }}"
+                        },
+                        {
+                            "fieldId": "description",
+                            "value": "={{ $('Split Results').item.json.snippet }}"
+                        },
+                        {
+                            "fieldId": "location_id",
+                            "value": 1
+                        },
+                        {
+                            "fieldId": "source_url",
+                            "value": "={{ $('Split Results').item.json.link }}"
+                        },
+                        {
+                            "fieldId": "status",
+                            "value": "for_sale"
+                        },
+                        {
+                            "fieldId": "is_featured",
+                            "value": false
+                        },
+                        {
+                            "fieldId": "features",
+                            "value": "{ \"auto_generated\": true }"
+                        }
+                    ]
+                }
+            },
+            "id": "sniper-promote-007",
+            "name": "Auto-Promote to Live",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1600,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            },
+            "notes": "Automatically pushes high-confidence prospects to the Value-Add platform layer (properties table)"
+        }
+    ],
+    "connections": {
+        "Daily Schedule": {
+            "main": [
+                [
+                    {
+                        "node": "Search FSBO",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search FSBO": {
+            "main": [
+                [
+                    {
+                        "node": "Split Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Results": {
+            "main": [
+                [
+                    {
+                        "node": "Basic LLM Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq Chat Model": {
+            "ai_language_model": [
+                [
+                    {
+                        "node": "Basic LLM Chain",
+                        "type": "ai_language_model",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Basic LLM Chain": {
+            "main": [
+                [
+                    {
+                        "node": "Parse JSON",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse JSON": {
+            "main": [
+                [
+                    {
+                        "node": "Filter: Only FSBO",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter: Only FSBO": {
+            "main": [
+                [
+                    {
+                        "node": "Save Prospect",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save Prospect": {
+            "main": [
+                [
+                    {
+                        "node": "Auto-Promote to Live",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

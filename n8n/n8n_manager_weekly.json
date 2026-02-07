@@ -1,0 +1,295 @@
+{
+    "name": "Manager Agent Weekly Health Check",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 9 * * 1"
+                        }
+                    ]
+                }
+            },
+            "id": "trigger-cron",
+            "name": "Weekly Trigger (Mon 9AM)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM public.get_coverage_gaps() LIMIT 20;",
+                "options": {}
+            },
+            "id": "query-gaps",
+            "name": "Query Coverage Gaps",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                450,
+                200
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-creds",
+                    "name": "Supabase API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM public.get_innovation_suggestions(7);",
+                "options": {}
+            },
+            "id": "query-failed-searches",
+            "name": "Query Failed Searches",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                450,
+                400
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-creds",
+                    "name": "Supabase API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT id, name, contact_phone, website, whatsapp, contact_email FROM agencies WHERE ai_updated_at IS NULL OR ai_updated_at < NOW() - INTERVAL '30 days' ORDER BY random() LIMIT 50;",
+                "options": {}
+            },
+            "id": "sample-agencies",
+            "name": "Sample 50 Agencies",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                450,
+                600
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-creds",
+                    "name": "Supabase API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un asistente que verifica datos de negocios inmobiliarios. Analiza la información del directorio y sugiere si los datos parecen actualizados o desactualizados basándote en patrones comunes. Responde en JSON con formato: {\\\"needs_update\\\": boolean, \\\"reason\\\": string, \\\"suggested_actions\\\": string[]}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Verifica estos datos de agencia inmobiliaria:\\n\\nNombre: {{ $json.name }}\\nTeléfono: {{ $json.contact_phone }}\\nWhatsApp: {{ $json.whatsapp }}\\nWebsite: {{ $json.website }}\\nEmail: {{ $json.contact_email }}\\n\\n¿Los datos parecen actualizados y completos?\"\n    }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+                "options": {}
+            },
+            "id": "verify-data-llm",
+            "name": "Verify Data with LLM",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                700,
+                600
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "groq-api-key",
+                    "name": "Groq API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const gaps = $('Query Coverage Gaps').all();\nconst failedSearches = $('Query Failed Searches').all();\nconst verificationResults = $('Verify Data with LLM').all();\n\n// Count agencies needing update\nlet needsUpdateCount = 0;\nlet verifiedCount = verificationResults.length;\n\nfor (const result of verificationResults) {\n  try {\n    const parsed = JSON.parse(result.json.choices[0].message.content);\n    if (parsed.needs_update) needsUpdateCount++;\n  } catch (e) {\n    // Skip parsing errors\n  }\n}\n\n// Build report\nconst today = new Date().toISOString().split('T')[0];\n\nconst criticalGaps = gaps.filter(g => g.json.priority === 'urgent' || g.json.priority === 'high');\nconst topSearches = failedSearches.slice(0, 5);\n\nconst report = `# 📊 Health Check Semanal - ${today}\n\n## 🔴 Gaps Críticos (${criticalGaps.length} zonas)\n${criticalGaps.map(g => `- **${g.json.neighborhood}** (${g.json.zone}): ${g.json.property_count} propiedades - ${g.json.property_category}`).join('\\n')}\n\n## 💡 Sugerencias de Innovación\nBasado en búsquedas sin resultados:\n${topSearches.map((s, i) => `${i+1}. \"${s.json.query}\" - ${s.json.search_count} búsquedas → Categoría sugerida: ${s.json.suggested_category}`).join('\\n')}\n\n## ✅ Control de Calidad\n- ${verifiedCount} perfiles verificados\n- ${needsUpdateCount} requieren actualización\n\n## 🎯 Acciones Recomendadas\n${criticalGaps.slice(0, 3).map(g => `- [ ] Ejecutar scraper en ${g.json.neighborhood}`).join('\\n')}\n${topSearches.slice(0, 2).map(s => `- [ ] Evaluar agregar categoría \"${s.json.suggested_category}\"`).join('\\n')}\n`;\n\nreturn [{ json: { report, gaps_count: criticalGaps.length, suggestions_count: topSearches.length, verified_count: verifiedCount } }];"
+            },
+            "id": "generate-report",
+            "name": "Generate Weekly Report",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                950,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"text\": \"🧠 *Manager Agent - Health Check Semanal*\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"{{ $json.report.replace(/\\n/g, '\\\\n').replace(/\"/g, '\\\\\"') }}\"\n      }\n    }\n  ]\n}",
+                "options": {}
+            },
+            "id": "send-slack",
+            "name": "Send to Slack",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "tableId": "data_quality_log",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "entity_type",
+                            "fieldValue": "agency"
+                        },
+                        {
+                            "fieldId": "entity_id",
+                            "fieldValue": "={{ $('Sample 50 Agencies').item.json.id }}"
+                        },
+                        {
+                            "fieldId": "check_type",
+                            "fieldValue": "phone"
+                        },
+                        {
+                            "fieldId": "field_name",
+                            "fieldValue": "contact_phone"
+                        },
+                        {
+                            "fieldId": "verification_source",
+                            "fieldValue": "ai"
+                        },
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "detected"
+                        },
+                        {
+                            "fieldId": "updated_by",
+                            "fieldValue": "ai"
+                        }
+                    ]
+                }
+            },
+            "id": "log-quality-check",
+            "name": "Log Quality Check",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                700,
+                750
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-creds",
+                    "name": "Supabase API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Weekly Trigger (Mon 9AM)": {
+            "main": [
+                [
+                    {
+                        "node": "Query Coverage Gaps",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Query Failed Searches",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Sample 50 Agencies",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Query Coverage Gaps": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Query Failed Searches": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Sample 50 Agencies": {
+            "main": [
+                [
+                    {
+                        "node": "Verify Data with LLM",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Verify Data with LLM": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Weekly Report",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Log Quality Check",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Weekly Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send to Slack",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "manager-agent"
+        },
+        {
+            "name": "weekly"
+        },
+        {
+            "name": "automated"
+        }
+    ]
+}

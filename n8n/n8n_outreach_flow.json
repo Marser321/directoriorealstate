@@ -1,0 +1,267 @@
+{
+    "name": "Real Estate Sniper - Outreach (Groq Edition)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 15
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-cron-001",
+            "name": "Cron (15 min)",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "outreach_queue",
+                "returnAll": false,
+                "limit": 10,
+                "filters": {
+                    "conditions": [
+                        {
+                            "key": "status",
+                            "value": "pending"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-fetch-queue-002",
+            "name": "Get Pending Tasks",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "prospect_properties",
+                "returnAll": false,
+                "limit": 1,
+                "filters": {
+                    "conditions": [
+                        {
+                            "key": "id",
+                            "value": "={{ $json.lead_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-fetch-lead-003",
+            "name": "Get Lead Details",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameter": [
+                        {
+                            "name": "model",
+                            "value": "llama-3.3-70b-versatile"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"user\", \"content\": \"Escribe un mensaje de WhatsApp corto para el propietario de: {{ $json.address }}.\\nContexto: Soy Mario, experto inmobiliario. Quiero regalarle fotos HDR.\\nDetalle propiedad: {{ $json.description }}\\n\\nReglas:\\n- NO ventas.\\n- Menciona un detalle específico de su descripción.\\n- Tono casual, empático.\\n- Máximo 300 caracteres.\"}]"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "outreach-ai-write-004",
+            "name": "Groq AI Writer",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                850,
+                300
+            ],
+            "notes": "Uses Groq (Llama 3)"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ !!$node['Get Lead Details'].json.owner_whatsapp }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-switch-005",
+            "name": "Has WhatsApp?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.evolution-api.com/message/sendText",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameter": [
+                        {
+                            "name": "number",
+                            "value": "={{ $node['Get Lead Details'].json.owner_whatsapp }}"
+                        },
+                        {
+                            "name": "text",
+                            "value": "={{ $json.choices[0].message.content }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-send-wa-006",
+            "name": "Send WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1250,
+                200
+            ],
+            "notes": "Requires Evolution API Config"
+        },
+        {
+            "parameters": {
+                "tableId": "outreach_queue",
+                "operation": "update",
+                "rowId": "={{ $node['Get Pending Tasks'].json.id }}",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "status",
+                            "value": "sent"
+                        },
+                        {
+                            "fieldId": "message_body",
+                            "value": "={{ $node['Groq AI Writer'].json.choices[0].message.content }}"
+                        }
+                    ]
+                }
+            },
+            "id": "outreach-update-status-007",
+            "name": "Update Queue Status",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1450,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Cron (15 min)": {
+            "main": [
+                [
+                    {
+                        "node": "Get Pending Tasks",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Pending Tasks": {
+            "main": [
+                [
+                    {
+                        "node": "Get Lead Details",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Lead Details": {
+            "main": [
+                [
+                    {
+                        "node": "Groq AI Writer",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq AI Writer": {
+            "main": [
+                [
+                    {
+                        "node": "Has WhatsApp?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has WhatsApp?": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Update Queue Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

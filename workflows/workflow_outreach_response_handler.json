@@ -1,0 +1,270 @@
+{
+    "name": "Outreach_Response_Handler",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "webhook/whatsapp-response",
+                "options": {}
+            },
+            "name": "Webhook WhatsApp",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "operation": "getAll",
+                "limit": 1,
+                "filters": {
+                    "conditions": [
+                        {
+                            "key": "owner_whatsapp",
+                            "value": "={{ $json.body.data.key.remoteJid.replace('@s.whatsapp.net', '') }}"
+                        }
+                    ]
+                }
+            },
+            "name": "Lookup Lead",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-cred-id",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "llama-3.3-70b-versatile"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"system\", \"content\": \"You are a lead classifier for a real estate directory. Classify the user response into one of these intents: INTERESTED, NOT_INTERESTED, STOP, OTHER. Response must be ONLY the intent keyword.\"}, {\"role\": \"user\", \"content\": \"{{ $node['Webhook WhatsApp'].json.body.data.message.conversation }}\"}]"
+                        }
+                    ]
+                }
+            },
+            "name": "Classify Intent (Groq)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                600,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "groq-api-key",
+                    "name": "Groq API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "dataType": "string",
+                "value1": "={{ $json.choices[0].message.content.trim() }}",
+                "rules": {
+                    "rules": [
+                        {
+                            "value2": "INTERESTED",
+                            "output": 0
+                        },
+                        {
+                            "value2": "NOT_INTERESTED",
+                            "output": 1
+                        },
+                        {
+                            "value2": "STOP",
+                            "output": 2
+                        }
+                    ]
+                }
+            },
+            "name": "Switch Intent",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 1,
+            "position": [
+                800,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "prospect_properties",
+                "operation": "update",
+                "updateKey": "id",
+                "columns": "status",
+                "values": {
+                    "status": "qualified"
+                }
+            },
+            "name": "Mark Qualified",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1000,
+                150
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "supabase-cred-id",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "llama-3.3-70b-versatile"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"system\", \"content\": \"You are a helpful assistant for a real estate directory. The user is INTERESTED. Generate a warm, Spanish response inviting them to upload their property photos at 'https://directorio.com/upload'. Keep it short and friendly for WhatsApp.\"}, {\"role\": \"user\", \"content\": \"{{ $node['Webhook WhatsApp'].json.body.data.message.conversation }}\"}]"
+                        }
+                    ]
+                }
+            },
+            "name": "Generate Reply (Groq)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                150
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "groq-api-key",
+                    "name": "Groq API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://api.evolution-api.com/message/sendText",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "number",
+                            "value": "={{ $node['Lookup Lead'].json.owner_whatsapp || $node['Lookup Lead'].json.owner_phone }}"
+                        },
+                        {
+                            "name": "text",
+                            "value": "={{ $json.choices[0].message.content }}"
+                        }
+                    ]
+                }
+            },
+            "name": "WhatsApp Reply",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1400,
+                150
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "evolution-api-cred",
+                    "name": "Evolution API Key"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Lookup Lead",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Lookup Lead": {
+            "main": [
+                [
+                    {
+                        "node": "Classify Intent (Groq)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Classify Intent (Groq)": {
+            "main": [
+                [
+                    {
+                        "node": "Switch Intent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Switch Intent": {
+            "main": [
+                [
+                    {
+                        "node": "Mark Qualified",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mark Qualified": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Reply (Groq)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Reply (Groq)": {
+            "main": [
+                [
+                    {
+                        "node": "WhatsApp Reply",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

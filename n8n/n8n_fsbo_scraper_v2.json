@@ -1,0 +1,449 @@
+{
+    "name": "Real Estate FSBO Scraper v2 (Anti-Block Edition)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 8 * * *"
+                        }
+                    ]
+                }
+            },
+            "id": "fsbo-v2-trigger-001",
+            "name": "Daily 8AM Trigger",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// ==================================================\n// USER-AGENT ROTATOR + ANTI-BLOCK SECURITY\n// ==================================================\n\nconst userAgents = [\n  \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\",\n  \"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15\",\n  \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1\",\n  \"Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36\",\n  \"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0\",\n  \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\"\n];\n\n// Queries segmentados para el mercado uruguayo\nconst searchQueries = [\n  {\n    type: 'fsbo_venta',\n    query: 'site:mercadolibre.com.uy \"dueño vende\" OR \"trato directo\" OR \"sin inmobiliaria\" OR \"particular vende\"'\n  },\n  {\n    type: 'fsbo_renta_anual',\n    query: 'site:gallito.com.uy \"dueño alquila\" OR \"alquiler directo\" \"contrato\" OR \"anual\"'\n  },\n  {\n    type: 'fsbo_renta_temporal',\n    query: 'site:gallito.com.uy \"alquiler temporario\" OR \"por temporada\" OR \"verano\"'\n  }\n];\n\n// Selección aleatoria\nconst randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];\nconst randomDelay = Math.floor(Math.random() * 3000) + 1000; // 1-4 segundos\n\n// Delay anti-rate-limit\nawait new Promise(r => setTimeout(r, randomDelay));\n\n// Retorna 3 items (uno por cada query)\nreturn searchQueries.map(q => ({\n  json: {\n    userAgent: randomUA,\n    delay: randomDelay,\n    searchType: q.type,\n    searchQuery: q.query\n  }\n}));"
+            },
+            "id": "fsbo-v2-rotator-002",
+            "name": "User-Agent Rotator",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                400,
+                300
+            ],
+            "notes": "Rotates User-Agents and generates 3 segmented search queries"
+        },
+        {
+            "parameters": {
+                "batchSize": 1,
+                "options": {
+                    "reset": false
+                }
+            },
+            "id": "fsbo-v2-batch-003",
+            "name": "Process One Query",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                600,
+                300
+            ],
+            "notes": "Process queries one at a time to respect rate limits"
+        },
+        {
+            "parameters": {
+                "url": "https://serpapi.com/search.json",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpQueryAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "User-Agent",
+                            "value": "={{ $json.userAgent }}"
+                        }
+                    ]
+                },
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "q",
+                            "value": "={{ $json.searchQuery }}"
+                        },
+                        {
+                            "name": "num",
+                            "value": "10"
+                        },
+                        {
+                            "name": "gl",
+                            "value": "uy"
+                        },
+                        {
+                            "name": "hl",
+                            "value": "es"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "fsbo-v2-search-004",
+            "name": "SerpAPI Search",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                800,
+                300
+            ],
+            "credentials": {
+                "httpQueryAuth": {
+                    "id": "YOUR_SERPAPI_CREDENTIAL_ID",
+                    "name": "SerpAPI Key"
+                }
+            },
+            "notes": "Uses rotating User-Agent headers"
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "organic_results",
+                "options": {}
+            },
+            "id": "fsbo-v2-split-005",
+            "name": "Split Search Results",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 3.1,
+            "position": [
+                1000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Preserve search type from parent batch\nconst searchType = $('Process One Query').first().json.searchType;\n\nreturn {\n  json: {\n    ...items[0].json,\n    searchType: searchType\n  }\n};"
+            },
+            "id": "fsbo-v2-enrich-005b",
+            "name": "Enrich with Search Type",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un experto inmobiliario uruguayo. Analiza listados y extrae datos estructurados. SIEMPRE responde en JSON válido.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analiza este resultado de búsqueda inmobiliaria:\\n\\nTítulo: {{ $json.title }}\\nSnippet: {{ $json.snippet }}\\nLink: {{ $json.link }}\\nTipo Búsqueda: {{ $json.searchType }}\\n\\nExtrae en JSON estricto (sin markdown):\\n{\\n  \\\"is_fsbo\\\": boolean (true si es propietario directo, sin inmobiliaria),\\n  \\\"fsbo_confidence\\\": number 0-1 (confianza de que es FSBO),\\n  \\\"fsbo_keywords\\\": string[] (palabras clave FSBO encontradas: 'dueño', 'directo', 'sin comisión', etc.),\\n  \\\"rental_type\\\": 'anual' | 'temporal' | null (null si es venta),\\n  \\\"price\\\": number (solo números, 0 si no hay),\\n  \\\"currency\\\": 'USD' | 'UYU',\\n  \\\"address\\\": string (dirección o zona),\\n  \\\"property_type\\\": 'casa' | 'apartamento' | 'terreno' | 'local' | 'ph' | 'other',\\n  \\\"has_contact\\\": boolean (si parece tener teléfono/email)\\n}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 500\n}",
+                "options": {}
+            },
+            "id": "fsbo-v2-ai-006",
+            "name": "Groq: FSBO Classifier",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1400,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "YOUR_GROQ_CREDENTIAL_ID",
+                    "name": "Groq API Key"
+                }
+            },
+            "notes": "Uses Groq (Llama 3.3) for FSBO classification"
+        },
+        {
+            "parameters": {
+                "jsCode": "const result = $input.first().json;\nconst aiResponse = result.choices?.[0]?.message?.content || '{}';\n\n// Clean markdown code blocks if present\nlet cleanJson = aiResponse\n  .replace(/```json\\n?/g, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\ntry {\n  const parsed = JSON.parse(cleanJson);\n  \n  // Merge with original data\n  return {\n    json: {\n      ...parsed,\n      original_title: $('Enrich with Search Type').first().json.title,\n      original_snippet: $('Enrich with Search Type').first().json.snippet,\n      original_url: $('Enrich with Search Type').first().json.link,\n      search_type: $('Enrich with Search Type').first().json.searchType\n    }\n  };\n} catch (e) {\n  return {\n    json: {\n      error: 'JSON Parse Error',\n      raw: aiResponse,\n      original_url: $('Enrich with Search Type').first().json.link\n    }\n  };\n}"
+            },
+            "id": "fsbo-v2-parse-007",
+            "name": "Parse AI Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1600,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.is_fsbo }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        },
+                        {
+                            "leftValue": "={{ $json.fsbo_confidence }}",
+                            "rightValue": 0.6,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gte"
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "fsbo-v2-filter-008",
+            "name": "Filter: High Confidence FSBO",
+            "type": "n8n-nodes-base.filter",
+            "typeVersion": 2,
+            "position": [
+                1800,
+                300
+            ],
+            "notes": "Only passes FSBO leads with >60% confidence"
+        },
+        {
+            "parameters": {
+                "operation": "create",
+                "tableId": "prospect_properties",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "source",
+                            "fieldValue": "google_search"
+                        },
+                        {
+                            "fieldId": "original_url",
+                            "fieldValue": "={{ $json.original_url }}"
+                        },
+                        {
+                            "fieldId": "address",
+                            "fieldValue": "={{ $json.address }}"
+                        },
+                        {
+                            "fieldId": "listed_price",
+                            "fieldValue": "={{ $json.price || 0 }}"
+                        },
+                        {
+                            "fieldId": "currency",
+                            "fieldValue": "={{ $json.currency || 'USD' }}"
+                        },
+                        {
+                            "fieldId": "property_type",
+                            "fieldValue": "={{ $json.property_type || 'other' }}"
+                        },
+                        {
+                            "fieldId": "description",
+                            "fieldValue": "={{ $json.original_snippet }}"
+                        },
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "new"
+                        },
+                        {
+                            "fieldId": "quality_score",
+                            "fieldValue": "={{ Math.round($json.fsbo_confidence * 100) }}"
+                        },
+                        {
+                            "fieldId": "is_fsbo",
+                            "fieldValue": true
+                        },
+                        {
+                            "fieldId": "fsbo_confidence",
+                            "fieldValue": "={{ $json.fsbo_confidence }}"
+                        },
+                        {
+                            "fieldId": "fsbo_keywords",
+                            "fieldValue": "={{ JSON.stringify($json.fsbo_keywords || []) }}"
+                        },
+                        {
+                            "fieldId": "rental_type",
+                            "fieldValue": "={{ $json.rental_type }}"
+                        }
+                    ]
+                }
+            },
+            "id": "fsbo-v2-save-009",
+            "name": "Save to Supabase",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2000,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "id": "fsbo-v2-loop-010",
+            "name": "Loop Back",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                2200,
+                300
+            ],
+            "notes": "Returns to batch node for next query"
+        }
+    ],
+    "connections": {
+        "Daily 8AM Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "User-Agent Rotator",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "User-Agent Rotator": {
+            "main": [
+                [
+                    {
+                        "node": "Process One Query",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process One Query": {
+            "main": [
+                [
+                    {
+                        "node": "SerpAPI Search",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Back",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "SerpAPI Search": {
+            "main": [
+                [
+                    {
+                        "node": "Split Search Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Search Results": {
+            "main": [
+                [
+                    {
+                        "node": "Enrich with Search Type",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Enrich with Search Type": {
+            "main": [
+                [
+                    {
+                        "node": "Groq: FSBO Classifier",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Groq: FSBO Classifier": {
+            "main": [
+                [
+                    {
+                        "node": "Parse AI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse AI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Filter: High Confidence FSBO",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter: High Confidence FSBO": {
+            "main": [
+                [
+                    {
+                        "node": "Save to Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save to Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Back",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Loop Back": {
+            "main": [
+                [
+                    {
+                        "node": "Process One Query",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "id": "scraper",
+            "name": "scraper"
+        },
+        {
+            "id": "fsbo",
+            "name": "fsbo"
+        }
+    ]
+}

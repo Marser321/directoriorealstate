@@ -1,0 +1,337 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   LUXE ESTATE DESIGN SYSTEM
+   Paleta: Alabaster White + Onyx Black + Champagne Gold
+   ============================================ */
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Luxe Gold */
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+  --font-mono: var(--font-geist-mono);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  /* Base Radius */
+  --radius: 0.625rem;
+
+  /* Luxe Estate Palette */
+  --background: #FAFAFA;
+  /* Alabaster White */
+  --foreground: #0A0A0A;
+  /* Onyx Black */
+  --accent: #D4AF37;
+  /* Champagne Gold */
+  --gold: #D4AF37;
+  --gold-light: #E8D48A;
+  --gold-dark: #B8942F;
+
+  /* Card & Surfaces */
+  --card: #FFFFFF;
+  --card-foreground: #0A0A0A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A0A0A;
+
+  /* Primary = Gold */
+  --primary: #D4AF37;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary = Muted */
+  --secondary: #F5F5F0;
+  --secondary-foreground: #0A0A0A;
+
+  /* Muted Tones */
+  --muted: #F5F5F0;
+  --muted-foreground: #6B6B6B;
+
+  /* Accent styling */
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --destructive: #DC2626;
+
+  /* Borders & Inputs */
+  --border: #E5E5E0;
+  --input: #E5E5E0;
+  --ring: #D4AF37;
+}
+
+.dark {
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  --card: #141414;
+  --card-foreground: #FAFAFA;
+  --popover: #141414;
+  --popover-foreground: #FAFAFA;
+  --primary: #D4AF37;
+  --primary-foreground: #0A0A0A;
+  --secondary: #1F1F1F;
+  --secondary-foreground: #FAFAFA;
+  --muted: #1F1F1F;
+  --muted-foreground: #A3A3A3;
+  --accent: #D4AF37;
+  --accent-foreground: #0A0A0A;
+  --destructive: #EF4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #D4AF37;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image: radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
+  }
+
+  ::selection {
+    background-color: rgba(212, 175, 55, 0.2);
+    color: #0A0A0A;
+  }
+
+  /* Typography */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-playfair), 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  p,
+  span,
+  div,
+  input,
+  button {
+    font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* ============================================
+   LUXE COMPONENTS
+   ============================================ */
+
+@layer components {
+
+  /* Glassmorphism Card */
+  .glass-card {
+    @apply bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl;
+  }
+
+  /* Hover Glow Effect for Buttons */
+  .btn-luxe {
+    @apply relative overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+  }
+
+  .btn-luxe::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .btn-luxe:hover::before {
+    opacity: 1;
+  }
+
+  .btn-luxe:hover {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), 0 0 60px rgba(212, 175, 55, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Property Card Hover Effect */
+  .property-card {
+    @apply relative overflow-hidden rounded-xl transition-all duration-500;
+  }
+
+  .property-card:hover {
+    @apply -translate-y-2;
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1), 0 0 20px -3px rgba(212, 175, 55, 0.15);
+  }
+
+  .property-card:hover .property-card-image {
+    @apply scale-110;
+  }
+
+  .property-card-image {
+    @apply transition-transform duration-700 ease-out;
+  }
+
+  /* Sticky Sidebar */
+  .sticky-sidebar {
+    @apply sticky top-24;
+  }
+
+  /* Gold Accent Underline */
+  .gold-underline {
+    @apply relative inline-block;
+  }
+
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-gold to-gold-light;
+  }
+
+  /* Scrollbar Hide */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 3D Visual Effects */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .perspective-2000 {
+    perspective: 2000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .translate-z-10 {
+    transform: translateZ(10px);
+  }
+
+  .translate-z-20 {
+    transform: translateZ(20px);
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@layer utilities {
+
+  /* Smooth entrance */
+  .animate-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Parallax helper */
+  .parallax-slow {
+    will-change: transform;
+  }
+
+  /* Gold shimmer effect */
+  .shimmer-gold {
+    background: linear-gradient(90deg,
+        var(--gold) 0%,
+        var(--gold-light) 50%,
+        var(--gold) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Skeleton shimmer effect for loading cards */
+  .skeleton-shimmer {
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Animated gold gradient text */
+  .animate-gradient {
+    animation: gradient-x 8s ease infinite;
+  }
+
+  @keyframes gradient-x {
+
+    0%,
+    100% {
+      background-size: 200% 200%;
+      background-position: left center;
+    }
+
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
+  }
+
+  @keyframes skeletonShimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
