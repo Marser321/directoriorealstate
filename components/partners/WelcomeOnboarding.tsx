@@ -20,17 +20,26 @@ function ActionCard({ icon: Icon, title, description, href, color, delay }: Acti
         emerald: 'border-emerald-500/20 hover:border-emerald-500/50 from-emerald-500/10 to-transparent text-emerald-400',
     }
 
+    const glowColors = {
+        gold: 'bg-gold/20',
+        indigo: 'bg-indigo-500/20',
+        emerald: 'bg-emerald-500/20',
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay }}
+            transition={{ delay, duration: 0.5, ease: "backOut" }}
             whileHover={{ y: -5, scale: 1.02 }}
-            className="relative group"
+            className="relative group h-full"
         >
-            <Link href={href} className={`block p-6 rounded-2xl border bg-gradient-to-br ${colors[color]} backdrop-blur-sm transition-all duration-300`}>
-                <div className="flex flex-col h-full">
-                    <div className="mb-4 p-3 rounded-xl bg-background/50 w-fit group-hover:scale-110 transition-transform duration-300">
+            <Link href={href} className={`block p-6 h-full rounded-2xl border bg-gradient-to-br ${colors[color]} backdrop-blur-sm transition-all duration-300 relative overflow-hidden`}>
+                {/* Shine Effect */}
+                <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
+
+                <div className="flex flex-col h-full relative z-20">
+                    <div className={`mb-4 p-3 rounded-xl bg-background/50 w-fit group-hover:scale-110 transition-transform duration-300 ${glowColors[color]} backdrop-blur-md`}>
                         <Icon className="w-8 h-8" />
                     </div>
                     <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-current transition-colors">
@@ -52,8 +61,9 @@ export function WelcomeOnboarding() {
     return (
         <div className="space-y-8 py-4">
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
                 className="text-center max-w-2xl mx-auto space-y-4"
             >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/10 border border-gold/20 text-gold text-xs font-bold tracking-wider uppercase">
@@ -63,7 +73,7 @@ export function WelcomeOnboarding() {
                     Tu Dashboard está listo, <br />
                     <span className="text-gold">comencemos a crecer</span>
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-lg">
                     Sigue estos pasos para activar tu presencia y empezar a recibir leads cualificados.
                 </p>
             </motion.div>
@@ -71,27 +81,27 @@ export function WelcomeOnboarding() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <ActionCard
                     icon={Plus}
-                    title="Publicar Propiedad"
+                    title="Publicar mi primera propiedad"
                     description="Sube tu primer inmueble y hazlo visible para miles de inversores."
                     href="/partners/dashboard/new"
                     color="gold"
-                    delay={0.1}
-                />
-                <ActionCard
-                    icon={UserCheck}
-                    title="Perfil Pro"
-                    description="Completa los datos de tu agencia para generar máxima confianza."
-                    href="/partners/dashboard"
-                    color="indigo"
                     delay={0.2}
                 />
                 <ActionCard
-                    icon={Compass}
-                    title="Explorar Mercado"
-                    description="Analiza la competencia y encuentra oportunidades en tu zona."
-                    href="/"
-                    color="emerald"
+                    icon={UserCheck}
+                    title="Completar perfil de agente"
+                    description="Genera confianza completando todos los datos de tu agencia."
+                    href="/partners/dashboard"
+                    color="indigo"
                     delay={0.3}
+                />
+                <ActionCard
+                    icon={Compass}
+                    title="Explorar tendencias del mercado"
+                    description="Descubre qué buscan los inversores y optimiza tu oferta."
+                    href="/tendencias"
+                    color="emerald"
+                    delay={0.4}
                 />
             </div>
         </div>

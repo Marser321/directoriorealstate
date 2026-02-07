@@ -2,40 +2,56 @@
 
 import { motion } from 'framer-motion'
 
+function SkeletonItem({ className }: { className?: string }) {
+    return (
+        <div className={`relative overflow-hidden bg-muted/20 ${className}`}>
+            <div className="absolute inset-0 translate-x-[-100%] animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+        </div>
+    )
+}
+
 export function DashboardSkeleton() {
     return (
-        <div className="min-h-[calc(100vh-4rem)] p-6 md:p-8 space-y-8 animate-pulse">
+        <div className="min-h-[calc(100vh-4rem)] p-6 md:p-8 space-y-8">
             {/* Header Skeleton */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-2">
-                    <div className="h-8 w-64 bg-muted rounded-lg" />
-                    <div className="h-4 w-48 bg-muted/60 rounded-md" />
+                <div className="space-y-3">
+                    <SkeletonItem className="h-10 w-64 rounded-xl bg-muted/40" />
+                    <SkeletonItem className="h-5 w-96 rounded-lg bg-muted/30" />
                 </div>
-                <div className="h-11 w-40 bg-muted rounded-xl" />
+                <SkeletonItem className="h-12 w-40 rounded-xl bg-gold/10" />
             </div>
 
             {/* Stats Grid Skeleton */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-32 bg-muted/30 rounded-xl border border-border/50 p-5" />
+                    <div key={i} className="h-32 rounded-xl border border-border/50 p-5 bg-background/50 relative overflow-hidden">
+                        <div className="flex justify-between items-start mb-4">
+                            <SkeletonItem className="h-4 w-24 rounded" />
+                            <SkeletonItem className="h-8 w-8 rounded-lg" />
+                        </div>
+                        <SkeletonItem className="h-8 w-32 rounded mb-2" />
+                        <SkeletonItem className="h-3 w-20 rounded" />
+                    </div>
                 ))}
             </div>
 
-            {/* Table Skeleton */}
+            {/* Table/Content Skeleton */}
             <div className="glass-card rounded-xl overflow-hidden border border-border/50">
-                <div className="p-5 border-b border-border/20">
-                    <div className="h-6 w-32 bg-muted rounded" />
+                <div className="p-5 border-b border-border/20 flex justify-between">
+                    <SkeletonItem className="h-6 w-48 rounded" />
+                    <SkeletonItem className="h-4 w-24 rounded" />
                 </div>
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-5">
                     {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="flex gap-4">
-                            <div className="w-16 h-12 bg-muted/40 rounded-lg" />
+                        <div key={i} className="flex gap-4 items-center">
+                            <SkeletonItem className="w-16 h-12 rounded-lg bg-muted/30" />
                             <div className="flex-1 space-y-2">
-                                <div className="h-4 w-1/3 bg-muted/50 rounded" />
-                                <div className="h-3 w-1/4 bg-muted/30 rounded" />
+                                <SkeletonItem className="h-5 w-1/3 rounded" />
+                                <SkeletonItem className="h-3 w-1/4 rounded" />
                             </div>
-                            <div className="w-24 h-6 bg-muted/40 rounded-full" />
-                            <div className="w-12 h-6 bg-muted/40 rounded" />
+                            <SkeletonItem className="w-24 h-8 rounded-full" />
+                            <SkeletonItem className="w-12 h-6 rounded" />
                         </div>
                     ))}
                 </div>
@@ -44,7 +60,11 @@ export function DashboardSkeleton() {
             {/* Quick Actions Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-32 bg-muted/20 rounded-xl border border-border/30" />
+                    <div key={i} className="h-32 rounded-xl border border-border/30 bg-background/30 p-6 flex flex-col justify-center space-y-3">
+                        <SkeletonItem className="h-8 w-8 rounded-lg mb-2" />
+                        <SkeletonItem className="h-5 w-48 rounded" />
+                        <SkeletonItem className="h-3 w-full rounded" />
+                    </div>
                 ))}
             </div>
         </div>

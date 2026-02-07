@@ -26,13 +26,20 @@ export default async function NotFound() {
     const headersList = headers()
 
     const supabase = await createClient()
+
+    // Fetch more candidates to ensure randomness (e.g. 12)
     const { data } = await supabase
         .from('properties')
         .select('id, title, slug, main_image, description, price, currency, locations(name, type)')
         .eq('status', 'for_sale')
-        .limit(3)
+        .limit(12)
 
-    const suggestions = (data as unknown as FeaturedProperty[]) || []
+    const allSuggestions = (data as unknown as FeaturedProperty[]) || []
+
+    // Randomize: Shuffle array and take 3
+    const suggestions = allSuggestions
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
 
     return (
         <>

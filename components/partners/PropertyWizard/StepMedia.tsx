@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { UseFormReturn } from 'react-hook-form'
 import { Upload, X, Star, Image as ImageIcon, Video, Loader2, Check } from 'lucide-react'
 import { MediaData } from './schemas'
@@ -119,34 +119,46 @@ export function StepMedia({ form }: StepMediaProps) {
                 <span className="text-xs text-red-400 block">{errors.images.message}</span>
             )}
 
-            {/* Image Preview Grid */}
+            {/* Image Preview Grid (Reorderable) */}
             {images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <Reorder.Group
+                    axis="y"
+                    onReorder={(newOrder) => {
+                        setImages(newOrder);
+                        setValue('images', newOrder.map(i => i.file), { shouldValidate: true });
+                        // Update main image index if separate, but with reorder, index 0 is implicitly main
+                        setValue('main_image_index', 0, { shouldValidate: true });
+                    }}
+                    values={images}
+                    className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"
+                >
                     <AnimatePresence mode="popLayout">
                         {images.map((image, index) => (
-                            <motion.div
+                            <Reorder.Item
                                 key={image.preview}
-                                layout
+                                value={image}
+                                id={image.preview}
+                                layoutId={image.preview}
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}
-                                className="relative aspect-square rounded-xl overflow-hidden group"
+                                className="relative aspect-square rounded-xl overflow-hidden group cursor-grab active:cursor-grabbing"
                             >
                                 <img
                                     src={image.preview}
                                     alt={`Preview ${index + 1}`}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover pointer-events-none"
                                 />
 
                                 {/* Overlay */}
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    {/* Set as Main */}
+                                    {/* Set as Main (Manual override still useful) */}
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setMainImage(index) }}
                                         className={`p-2 rounded-lg transition-all ${mainImageIndex === index
-                                                ? 'bg-gold text-white'
-                                                : 'bg-white/20 text-white hover:bg-gold hover:text-white'
+                                            ? 'bg-gold text-white'
+                                            : 'bg-white/20 text-white hover:bg-gold hover:text-white'
                                             }`}
                                         title="Imagen principal"
                                     >
@@ -156,6 +168,7 @@ export function StepMedia({ form }: StepMediaProps) {
                                     {/* Remove */}
                                     <button
                                         type="button"
+                                        onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
                                         onClick={(e) => { e.stopPropagation(); removeImage(index) }}
                                         className="p-2 rounded-lg bg-red-500/80 text-white hover:bg-red-500 transition-all"
                                         title="Eliminar"
@@ -165,8 +178,14 @@ export function StepMedia({ form }: StepMediaProps) {
                                 </div>
 
                                 {/* Main Image Badge */}
-                                {mainImageIndex === index && (
-                                    <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-gold text-white text-xs font-medium flex items-center gap-1">
+                                {index === 0 && (
+                                    <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-gold text-white text-xs font-medium flex items-center gap-1 shadow-lg">
+                                        <Star className="w-3 h-3 fill-current" />
+                                        Portada
+                                    </div>
+                                )}
+                                {mainImageIndex === index && index !== 0 && (
+                                    <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-white/20 backdrop-blur-md text-white border border-white/30 text-xs font-medium flex items-center gap-1">
                                         <Star className="w-3 h-3 fill-current" />
                                         Principal
                                     </div>
@@ -193,10 +212,10 @@ export function StepMedia({ form }: StepMediaProps) {
                                         <Check className="w-3 h-3" />
                                     </div>
                                 )}
-                            </motion.div>
+                            </Reorder.Item>
                         ))}
                     </AnimatePresence>
-                </div>
+                </Reorder.Group>
             )}
 
             {/* Image Count */}
