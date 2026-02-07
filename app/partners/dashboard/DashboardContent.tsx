@@ -101,8 +101,14 @@ export default function DashboardPage() {
     )
 
     // Fetch properties from Supabase
+    // Fetch properties from Supabase
     useEffect(() => {
-        if (!agency) return
+        if (agencyLoading) return
+
+        if (!agency) {
+            setLoading(false)
+            return
+        }
 
         const fetchProperties = async () => {
             const supabase = getSupabaseBrowserClient()
@@ -119,7 +125,7 @@ export default function DashboardPage() {
         }
 
         fetchProperties()
-    }, [agency])
+    }, [agency, agencyLoading])
 
     // Hide toast after 3 seconds
     useEffect(() => {
