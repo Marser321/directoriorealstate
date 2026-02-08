@@ -14,37 +14,43 @@ export interface Database {
                     id: string
                     full_name: string | null
                     role: 'admin' | 'agent' | 'user'
-                    admin_role?: 'super_admin' | 'content_manager' | 'support'
-                    is_admin?: boolean
+                    admin_role: 'super_admin' | 'content_manager' | 'support' | null
+                    is_admin: boolean | null
                     avatar_url: string | null
                     phone: string | null
                     whatsapp: string | null
                     bio: string | null
                     license_number: string | null
                     created_at: string
-                    updated_at?: string
+                    updated_at: string
                 }
                 Insert: {
                     id: string
                     full_name?: string | null
                     role?: 'admin' | 'agent' | 'user'
+                    admin_role?: 'super_admin' | 'content_manager' | 'support' | null
+                    is_admin?: boolean | null
                     avatar_url?: string | null
                     phone?: string | null
                     whatsapp?: string | null
                     bio?: string | null
                     license_number?: string | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
                     full_name?: string | null
                     role?: 'admin' | 'agent' | 'user'
+                    admin_role?: 'super_admin' | 'content_manager' | 'support' | null
+                    is_admin?: boolean | null
                     avatar_url?: string | null
                     phone?: string | null
                     whatsapp?: string | null
                     bio?: string | null
                     license_number?: string | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Relationships: []
             }
@@ -88,28 +94,43 @@ export interface Database {
                     owner_name: string | null
                     owner_whatsapp: string | null
                     last_contact: string | null
+                    title: string | null
+                    images: string[] | null
+                    built_area: number | null
+                    land_area: number | null
+                    url: string | null
                     [key: string]: any
                 }
                 Insert: {
-                    id?: string;
-                    created_at?: string;
-                    updated_at?: string;
-                    address?: string;
-                    status?: string;
-                    owner_name?: string | null;
-                    owner_whatsapp?: string | null;
-                    last_contact?: string | null;
+                    id?: string
+                    created_at?: string
+                    updated_at?: string
+                    address?: string
+                    status?: string
+                    owner_name?: string | null
+                    owner_whatsapp?: string | null
+                    last_contact?: string | null
+                    title?: string | null
+                    images?: string[] | null
+                    built_area?: number | null
+                    land_area?: number | null
+                    url?: string | null
                     [key: string]: any
                 }
                 Update: {
-                    id?: string;
-                    created_at?: string;
-                    updated_at?: string;
-                    address?: string;
-                    status?: string;
-                    owner_name?: string | null;
-                    owner_whatsapp?: string | null;
-                    last_contact?: string | null;
+                    id?: string
+                    created_at?: string
+                    updated_at?: string
+                    address?: string
+                    status?: string
+                    owner_name?: string | null
+                    owner_whatsapp?: string | null
+                    last_contact?: string | null
+                    title?: string | null
+                    images?: string[] | null
+                    built_area?: number | null
+                    land_area?: number | null
+                    url?: string | null
                     [key: string]: any
                 }
                 Relationships: []
@@ -327,43 +348,43 @@ export interface Database {
                     [key: string]: any
                 }
                 Insert: {
-                    id?: string | number;
-                    created_at?: string;
-                    title: string;
-                    slug: string;
-                    agency_id: string | number;
-                    price: number;
-                    currency: string;
-                    status?: string;
-                    is_featured?: boolean;
-                    bedrooms?: number;
-                    bathrooms?: number;
-                    view_count?: number;
-                    main_image?: string | null;
-                    featured_until?: string | null;
-                    boost_level?: number;
-                    quality_score?: number;
-                    quality_feedback?: string | null;
+                    id?: string | number
+                    created_at?: string
+                    title: string
+                    slug: string
+                    agency_id: string | number
+                    price: number
+                    currency: string
+                    status?: string
+                    is_featured?: boolean
+                    bedrooms?: number
+                    bathrooms?: number
+                    view_count?: number
+                    main_image?: string | null
+                    featured_until?: string | null
+                    boost_level?: number
+                    quality_score?: number
+                    quality_feedback?: string | null
                     [key: string]: any
                 }
                 Update: {
-                    id?: string | number;
-                    created_at?: string;
-                    title?: string;
-                    slug?: string;
-                    agency_id?: string | number;
-                    price?: number;
-                    currency?: string;
-                    status?: string;
-                    is_featured?: boolean;
-                    bedrooms?: number;
-                    bathrooms?: number;
-                    view_count?: number;
-                    main_image?: string | null;
-                    featured_until?: string | null;
-                    boost_level?: number;
-                    quality_score?: number;
-                    quality_feedback?: string | null;
+                    id?: string | number
+                    created_at?: string
+                    title?: string
+                    slug?: string
+                    agency_id?: string | number
+                    price?: number
+                    currency?: string
+                    status?: string
+                    is_featured?: boolean
+                    bedrooms?: number
+                    bathrooms?: number
+                    view_count?: number
+                    main_image?: string | null
+                    featured_until?: string | null
+                    boost_level?: number
+                    quality_score?: number
+                    quality_feedback?: string | null
                     [key: string]: any
                 }
                 Relationships: [
@@ -371,6 +392,70 @@ export interface Database {
                         foreignKeyName: "properties_agency_id_fkey"
                         columns: ["agency_id"]
                         referencedRelation: "agencies"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            scraping_logs: {
+                Row: {
+                    id: string
+                    agency_url: string
+                    properties_count: number
+                    status: 'pending' | 'processing' | 'completed' | 'failed'
+                    scraped_at: string
+                    error_message: string | null
+                }
+                Insert: {
+                    id?: string
+                    agency_url: string
+                    properties_count?: number
+                    status: 'pending' | 'processing' | 'completed' | 'failed'
+                    scraped_at?: string
+                    error_message?: string | null
+                }
+                Update: {
+                    id?: string
+                    agency_url?: string
+                    properties_count?: number
+                    status?: 'pending' | 'processing' | 'completed' | 'failed'
+                    scraped_at?: string
+                    error_message?: string | null
+                }
+                Relationships: []
+            }
+            admin_logs: {
+                Row: {
+                    id: string
+                    created_at: string
+                    admin_id: string | null
+                    action: string
+                    target_resource: string
+                    details: Json | null
+                    ip_address: string | null
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    admin_id?: string | null
+                    action: string
+                    target_resource: string
+                    details?: Json | null
+                    ip_address?: string | null
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    admin_id?: string | null
+                    action?: string
+                    target_resource?: string
+                    details?: Json | null
+                    ip_address?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "admin_logs_admin_id_fkey"
+                        columns: ["admin_id"]
+                        referencedRelation: "profiles"
                         referencedColumns: ["id"]
                     }
                 ]

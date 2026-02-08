@@ -54,6 +54,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.915,
         lng: -54.86,
         location_name: "José Ignacio, La Juanita",
+        boost_level: 3,
+        quality_score: 95,
+        quality_feedback: "Excelente presentación",
+        featured_until: null,
     },
     {
         id: 2,
@@ -88,6 +92,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.94,
         lng: -54.91,
         location_name: "Playa Brava, Punta del Este",
+        boost_level: 2,
+        quality_score: 88,
+        quality_feedback: "Faltan fotos secundarias",
+        featured_until: null,
     },
     {
         id: 3,
@@ -122,6 +130,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.85,
         lng: -54.7,
         location_name: "José Ignacio, Chacras",
+        boost_level: 1,
+        quality_score: 92,
+        quality_feedback: "Localización verified",
+        featured_until: null,
     },
     {
         id: 4,
@@ -155,6 +167,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.912,
         lng: -54.865,
         location_name: "Centro, Punta del Este",
+        boost_level: 1,
+        quality_score: 75,
+        quality_feedback: "Sugerencia: Mejores fotos",
+        featured_until: null,
     },
     {
         id: 5,
@@ -189,6 +205,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.92,
         lng: -54.85,
         location_name: "Puerto, Punta del Este",
+        boost_level: 3,
+        quality_score: 98,
+        quality_feedback: "Listing premium",
+        featured_until: null,
     },
     {
         id: 6,
@@ -222,6 +242,10 @@ const MOCK_PROPERTIES: PropertyWithLocation[] = [
         lat: -34.908,
         lng: -54.875,
         location_name: "La Barra, Punta del Este",
+        boost_level: 1,
+        quality_score: 80,
+        quality_feedback: "Ok",
+        featured_until: null,
     },
 ]
 

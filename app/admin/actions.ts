@@ -1,13 +1,14 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createJSClient } from '@supabase/supabase-js'
+import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Database } from '@/types/database.types'
 
 // Initialize Supabase Admin Client (Service Role)
 // ONLY use this in server actions that are protected by admin checks
-const supabaseAdmin = createClient<Database>(
+const supabaseAdmin = createJSClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -16,27 +17,7 @@ const supabaseAdmin = createClient<Database>(
  * Validates if the current user is a Super Admin
  */
 async function checkSuperAdmin() {
-    const cookieStore = await cookies()
-    const supabase = createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value }) =>
-                            cookieStore.set(name, value)
-                        )
-                    } catch {
-                        // usage in Server Components
-                    }
-                },
-            },
-        }
-    )
+    const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Unauthorized')
