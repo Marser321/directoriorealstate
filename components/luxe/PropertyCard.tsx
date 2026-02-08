@@ -89,9 +89,9 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
 
     return (
         <CardContainer className="inter-var h-full w-full" containerClassName={`py-0 ${className}`}>
-            <CardBody className={`bg-card relative group/card dark:hover:shadow-2xl dark:hover:shadow-[#D4AF37]/20 dark:bg-black w-full h-full rounded-xl p-4 border transition-all duration-300 flex flex-col justify-between ${isBoosted
-                    ? 'border-[#D4AF37] shadow-lg shadow-[#D4AF37]/10'
-                    : 'dark:border-white/[0.1] border-black/[0.1]'
+            <CardBody className={`bg-card relative group/card dark:hover:shadow-2xl dark:hover:shadow-[#D4AF37]/20 dark:bg-black w-full min-h-[550px] h-full rounded-xl p-4 border transition-all duration-300 flex flex-col justify-between ${isBoosted
+                ? 'border-[#D4AF37] shadow-lg shadow-[#D4AF37]/10'
+                : 'dark:border-white/[0.1] border-black/[0.1]'
                 }`}>
 
                 <Link href={`/property/${property.id}`} className="block h-full group flex flex-col">
@@ -146,8 +146,8 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
                                     {isBoosted && (
                                         <CardItem translateZ="60" as="div">
                                             <span className={`px-2.5 py-1 backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider text-white rounded shadow-lg ${isPlatinum
-                                                    ? 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-400'
-                                                    : 'bg-[#D4AF37] border-[#D4AF37]'
+                                                ? 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-400'
+                                                : 'bg-[#D4AF37] border-[#D4AF37]'
                                                 }`}>
                                                 {isPlatinum ? 'Platinum' : 'Destacado'}
                                             </span>
