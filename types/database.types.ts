@@ -14,12 +14,15 @@ export interface Database {
                     id: string
                     full_name: string | null
                     role: 'admin' | 'agent' | 'user'
+                    admin_role?: 'super_admin' | 'content_manager' | 'support'
+                    is_admin?: boolean
                     avatar_url: string | null
                     phone: string | null
                     whatsapp: string | null
                     bio: string | null
                     license_number: string | null
                     created_at: string
+                    updated_at?: string
                 }
                 Insert: {
                     id: string
@@ -261,6 +264,43 @@ export interface Database {
                     }
                 ]
             }
+            admin_logs: {
+                Row: {
+                    id: string
+                    created_at: string
+                    admin_id: string | null
+                    action: string
+                    target_resource: string
+                    details: Json | null
+                    ip_address: string | null
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    admin_id?: string | null
+                    action: string
+                    target_resource: string
+                    details?: Json | null
+                    ip_address?: string | null
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    admin_id?: string | null
+                    action?: string
+                    target_resource?: string
+                    details?: Json | null
+                    ip_address?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "admin_logs_admin_id_fkey"
+                        columns: ["admin_id"]
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             properties: {
                 Row: {
                     id: string | number
@@ -280,6 +320,10 @@ export interface Database {
                     plot_area: number | null
                     features: Json | null
                     lifestyle_tags: string[] | null
+                    featured_until: string | null
+                    boost_level: number
+                    quality_score: number
+                    quality_feedback: string | null
                     [key: string]: any
                 }
                 Insert: {
@@ -296,6 +340,10 @@ export interface Database {
                     bathrooms?: number;
                     view_count?: number;
                     main_image?: string | null;
+                    featured_until?: string | null;
+                    boost_level?: number;
+                    quality_score?: number;
+                    quality_feedback?: string | null;
                     [key: string]: any
                 }
                 Update: {
@@ -312,6 +360,10 @@ export interface Database {
                     bathrooms?: number;
                     view_count?: number;
                     main_image?: string | null;
+                    featured_until?: string | null;
+                    boost_level?: number;
+                    quality_score?: number;
+                    quality_feedback?: string | null;
                     [key: string]: any
                 }
                 Relationships: [

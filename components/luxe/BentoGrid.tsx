@@ -116,17 +116,14 @@ export function BentoGrid({
                     ) : (
                         // Property cards
                         properties.map((property, index) => {
-                            // Asymmetrical Layout Pattern
-                            // Items at index 0, 3, 6... span 2 columns on large screens
-                            const isLarge = index === 0 || index === 3 || index === 6;
-
+                            // Uniform Grid Layout (Removed Bento/Asymmetrical pattern for alignment)
                             return (
                                 <PropertyCard
                                     key={property.id}
                                     property={property}
                                     index={index}
                                     onHover={onPropertyHover}
-                                    className={`${isLarge ? 'md:col-span-2 lg:col-span-2' : 'col-span-1'} h-full`}
+                                    className="col-span-1 h-full"
                                 />
                             );
                         })

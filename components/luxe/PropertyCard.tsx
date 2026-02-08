@@ -24,6 +24,7 @@ interface Property {
     status?: string;
     lifestyle_tags?: string[] | null;
     is_featured?: boolean;
+    boost_level?: number;
 }
 
 interface PropertyCardProps {
@@ -83,13 +84,19 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
         }).format(price);
     };
 
-    return (
-        <CardContainer className="inter-var h-full" containerClassName={`py-0 ${className}`}>
-            <CardBody className="bg-card relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full h-auto rounded-xl p-4 border transition-all duration-300">
+    const isBoosted = (property.boost_level && property.boost_level >= 2) || false;
+    const isPlatinum = (property.boost_level && property.boost_level >= 3) || false;
 
-                <Link href={`/property/${property.id}`} className="block h-full group">
+    return (
+        <CardContainer className="inter-var h-full w-full" containerClassName={`py-0 ${className}`}>
+            <CardBody className={`bg-card relative group/card dark:hover:shadow-2xl dark:hover:shadow-[#D4AF37]/20 dark:bg-black w-full h-full rounded-xl p-4 border transition-all duration-300 flex flex-col justify-between ${isBoosted
+                    ? 'border-[#D4AF37] shadow-lg shadow-[#D4AF37]/10'
+                    : 'dark:border-white/[0.1] border-black/[0.1]'
+                }`}>
+
+                <Link href={`/property/${property.id}`} className="block h-full group flex flex-col">
                     <div
-                        className="h-full"
+                        className="flex-1 flex flex-col"
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
@@ -98,7 +105,7 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
                             translateZ="50"
                             className="w-full mt-2"
                         >
-                            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl group-hover/card:shadow-xl">
+                            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl group-hover/card:shadow-xl shadow-md border border-border/50">
                                 <div
                                     className="absolute inset-0 bg-cover bg-center blur-xl scale-110 transition-opacity duration-700"
                                     style={{
@@ -129,12 +136,23 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
                                 </div>
 
                                 {/* Status Badge - Pops more */}
-                                <div className="absolute top-3 left-3 z-10">
+                                <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
                                     <CardItem translateZ="60" as="div">
                                         <span className="px-2.5 py-1 bg-black/70 backdrop-blur-md border border-[#D4AF37]/50 text-[10px] font-bold uppercase tracking-wider text-white rounded shadow-lg">
                                             {property.status?.replace('_', ' ') || 'En Venta'}
                                         </span>
                                     </CardItem>
+
+                                    {isBoosted && (
+                                        <CardItem translateZ="60" as="div">
+                                            <span className={`px-2.5 py-1 backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider text-white rounded shadow-lg ${isPlatinum
+                                                    ? 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-400'
+                                                    : 'bg-[#D4AF37] border-[#D4AF37]'
+                                                }`}>
+                                                {isPlatinum ? 'Platinum' : 'Destacado'}
+                                            </span>
+                                        </CardItem>
+                                    )}
                                 </div>
 
                                 {/* Favorite Button - Pops most */}
@@ -172,54 +190,56 @@ export function PropertyCard({ property, onHover, index = 0, className = '' }: P
                         </CardItem>
 
                         {/* Content */}
-                        <div className="mt-4 space-y-3">
-                            <div className="flex justify-between items-start">
+                        <div className="mt-5 space-y-4 flex-1 flex flex-col justify-between">
+                            <div className="flex justify-between items-start gap-4">
                                 <CardItem
                                     translateZ="40"
-                                    className="flex-1 mr-2"
+                                    className="flex-1"
                                 >
-                                    <h3 className="font-serif text-lg font-bold text-foreground line-clamp-1 group-hover/card:text-[#D4AF37] transition-colors">
+                                    <h3 className="font-serif text-xl font-bold text-foreground line-clamp-1 group-hover/card:text-[#D4AF37] transition-colors">
                                         {property.title}
                                     </h3>
-                                    <div className="flex items-center text-muted-foreground text-xs mt-1 truncate">
-                                        <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+                                    <div className="flex items-center text-muted-foreground text-sm mt-1.5 truncate">
+                                        <MapPin className="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-[#D4AF37]" />
                                         <span className="truncate">{locationDisplay}</span>
                                     </div>
                                 </CardItem>
 
                                 <CardItem
                                     translateZ="50"
-                                    className="text-right"
+                                    className="text-right flex-shrink-0"
                                 >
-                                    <span className="text-lg font-bold text-[#D4AF37]">
+                                    <span className="text-xl font-bold text-[#D4AF37] drop-shadow-sm">
                                         {formatPrice(property.price, property.currency)}
                                     </span>
                                 </CardItem>
                             </div>
 
-                            <CardItem translateZ="30">
-                                <div className="h-px bg-border/50 w-full my-2" />
-                            </CardItem>
+                            <div className="mt-auto pt-2">
+                                <CardItem translateZ="30">
+                                    <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent w-full mb-3" />
+                                </CardItem>
 
-                            <CardItem
-                                translateZ="40"
-                                className="flex justify-between text-xs text-muted-foreground"
-                            >
-                                <span className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/30">
-                                    <Bed className="w-3.5 h-3.5 text-[#D4AF37]/80" />
-                                    {property.bedrooms} Dorm
-                                </span>
-                                <span className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/30">
-                                    <Bath className="w-3.5 h-3.5 text-[#D4AF37]/80" />
-                                    {property.bathrooms} Baños
-                                </span>
-                                {property.built_area && (
-                                    <span className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/30">
-                                        <Maximize2 className="w-3.5 h-3.5 text-[#D4AF37]/80" />
-                                        {property.built_area} m²
+                                <CardItem
+                                    translateZ="40"
+                                    className="flex justify-between text-xs font-medium text-muted-foreground"
+                                >
+                                    <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-md border border-border/50 transition-colors group-hover/card:border-[#D4AF37]/30 group-hover/card:bg-[#D4AF37]/5">
+                                        <Bed className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                        {property.bedrooms} Dorm
                                     </span>
-                                )}
-                            </CardItem>
+                                    <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-md border border-border/50 transition-colors group-hover/card:border-[#D4AF37]/30 group-hover/card:bg-[#D4AF37]/5">
+                                        <Bath className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                        {property.bathrooms} Baños
+                                    </span>
+                                    {property.built_area && (
+                                        <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-md border border-border/50 transition-colors group-hover/card:border-[#D4AF37]/30 group-hover/card:bg-[#D4AF37]/5">
+                                            <Maximize2 className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                            {property.built_area} m²
+                                        </span>
+                                    )}
+                                </CardItem>
+                            </div>
                         </div>
                     </div>
                 </Link>

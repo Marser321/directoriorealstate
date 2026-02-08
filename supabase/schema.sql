@@ -259,10 +259,59 @@ create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
+-- Super Admins can update any profile (Promote/Demote)
+create policy "Super Admins can update any profile"
+  on public.profiles for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
 -- Users can insert their own profile
 create policy "Users can insert own profile"
   on public.profiles for insert
   with check (auth.uid() = id);
+
+-- === SUPER ADMIN OVERRIDES ===
+-- Grant full access to agencies for Super Admins
+create policy "Super Admins can update any agency"
+  on public.agencies for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+create policy "Super Admins can delete any agency"
+  on public.agencies for delete
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- Grant full access to properties for Super Admins
+create policy "Super Admins can update any property"
+  on public.properties for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
+
+create policy "Super Admins can delete any property"
+  on public.properties for delete
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
+  );
 
 -- ============================================
 -- 8. HELPER FUNCTIONS

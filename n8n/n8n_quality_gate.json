@@ -1,0 +1,144 @@
+{
+    "name": "Quality Gate AI (Real Estate)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "quality-gate",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                460,
+                340
+            ],
+            "webhookId": "quality-gate"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer YOUR_OPENAI_API_KEY"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "gpt-4-turbo-preview"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "=[{\"role\": \"system\", \"content\": \"You are a Real Estate Quality Assurance Expert. Analyze the property data and provide a Quality Score (0-100) and constructive feedback.\"}, {\"role\": \"user\", \"content\": \"Analyze this property:\\n\\nTitle: {{ $json.body.record.title }}\\nDescription: {{ $json.body.record.description }}\\nPrice: {{ $json.body.record.price }} {{ $json.body.record.currency }}\\nImages: {{ $json.body.record.images ? $json.body.record.images.length : 0 }}\\nLocation: {{ $json.body.record.city }}, {{ $json.body.record.neighborhood }}\\n\\nOutput JSON format using these exact keys: {\\\"quality_score\\\": number, \\\"quality_feedback\\\": string}\"}]"
+                        },
+                        {
+                            "name": "response_format",
+                            "value": "={ \"type\": \"json_object\" }"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "ai-analyst",
+            "name": "AI Quality Analyst",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                680,
+                340
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "YOUR_OPENAI_CREDENTIALS_ID",
+                    "name": "OpenAI API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "table": "properties",
+                "operation": "update",
+                "matchColumns": [
+                    "id"
+                ],
+                "updateKey": "id",
+                "columns": "quality_score, quality_feedback",
+                "options": {}
+            },
+            "id": "update-supabase",
+            "name": "Update Quality Score",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                900,
+                340
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_CREDENTIALS_ID",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "id": "parse-ai-response",
+            "name": "Parse AI Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                790,
+                600
+            ],
+            "parameters": {
+                "jsCode": "const aiResponse = $node[\"AI Quality Analyst\"].json.choices[0].message.content;\nconst parsed = JSON.parse(aiResponse);\n\nreturn {\n  json: {\n    quality_score: parsed.quality_score,\n    quality_feedback: parsed.quality_feedback,\n    id: $node[\"Webhook Trigger\"].json.body.record.id\n  }\n};"
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "AI Quality Analyst",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Quality Analyst": {
+            "main": [
+                [
+                    {
+                        "node": "Parse AI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse AI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Update Quality Score",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

@@ -38,22 +38,22 @@ export function Footer() {
                         <h5 className="font-bold text-lg text-background">Explorar</h5>
                         <ul className="space-y-3 text-background/60">
                             <li>
-                                <Link href="/propiedades" className="hover:text-[#D4AF37] transition-colors">
+                                <Link href="/search" className="hover:text-[#D4AF37] transition-colors">
                                     Propiedades
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/mapa" className="hover:text-[#D4AF37] transition-colors">
+                                <Link href="/search?mode=map" className="hover:text-[#D4AF37] transition-colors">
                                     Mapa Interactivo
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/lifestyle/beachfront" className="hover:text-[#D4AF37] transition-colors">
+                                <Link href="/search?lifestyles=waterfront" className="hover:text-[#D4AF37] transition-colors">
                                     Frente al Mar
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/agentes" className="hover:text-[#D4AF37] transition-colors">
+                                <Link href="/partners" className="hover:text-[#D4AF37] transition-colors">
                                     Inmobiliarias
                                 </Link>
                             </li>

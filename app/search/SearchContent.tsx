@@ -25,7 +25,7 @@ export default function SearchPage() {
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
     // Hooks
-    const { filters, hasActiveFilters, setSortBy, isPending } = useSearchFilters()
+    const { filters, hasActiveFilters, setSortBy, isPending, setQuery } = useSearchFilters()
     const {
         viewport,
         isSearchAsMove,
@@ -59,11 +59,16 @@ export default function SearchPage() {
 
                 {/* Compact Search Bar */}
                 <div className="flex-1 max-w-xl hidden md:flex items-center bg-slate-50 rounded-full px-4 py-2 border border-transparent focus-within:border-[#D4AF37]/50 focus-within:bg-white transition-all">
-                    <Search className="w-4 h-4 text-slate-400 mr-2" />
+                    {isPending || isLoading ? (
+                        <Loader2 className="w-4 h-4 text-[#D4AF37] mr-2 animate-spin" />
+                    ) : (
+                        <Search className="w-4 h-4 text-slate-400 mr-2" />
+                    )}
                     <input
                         type="text"
                         placeholder="La Barra, José Ignacio, Vista al Mar..."
                         defaultValue={filters.query}
+                        onChange={(e) => setQuery(e.target.value)}
                         className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none text-slate-900 placeholder:text-slate-500"
                     />
                 </div>

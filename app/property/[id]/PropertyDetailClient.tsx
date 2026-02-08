@@ -11,6 +11,9 @@ import { ScrollRevealSection, StickySidebar, FeatureReveal, TextReveal } from "@
 import { InvestmentPotential } from "@/components/luxe/InvestmentPotential";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
+
+const LuxeMap = dynamic(() => import("@/components/luxe/LuxeMap"), { ssr: false });
 
 interface PropertyData {
     id: number;
@@ -183,6 +186,17 @@ export default function PropertyDetailClient({ property }: PropertyDetailClientP
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        </ScrollRevealSection>
+
+                        {/* Location Map */}
+                        <ScrollRevealSection delay={0.4}>
+                            <h3 className="text-2xl font-serif font-bold mb-6">Ubicación</h3>
+                            <div className="h-[400px] rounded-2xl overflow-hidden border border-border shadow-lg">
+                                <LuxeMap
+                                    properties={[{ ...property, id: property.id }]}
+                                    hoveredPropertyId={null}
+                                />
                             </div>
                         </ScrollRevealSection>
 

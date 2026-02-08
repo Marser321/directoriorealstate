@@ -5,93 +5,38 @@ import { BentoGrid } from "@/components/luxe/BentoGrid";
 import { LifestyleCategories } from "@/components/luxe/LifestyleCategories";
 import { MapWithListings } from "@/components/luxe/MapWithListings";
 import { Footer } from "@/components/luxe/Footer";
-
-// This would typically come from a database or API
-const FEATURED_PROPERTIES = [
-  {
-    id: 1,
-    title: "Villa Marítima Exclusiva",
-    price: 2500000,
-    currency: "USD",
-    bedrooms: 5,
-    bathrooms: 4,
-    built_area: 450,
-    location: "La Barra",
-    images: ["/images/placeholders/luxury-villa.jpg", "/images/placeholders/interior-view.jpg"],
-    main_image: "/images/placeholders/luxury-villa.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Frente al Mar", "Diseño"]
-  },
-  {
-    id: 2,
-    title: "Penthouse en Punta",
-    price: 1200000,
-    currency: "USD",
-    bedrooms: 3,
-    bathrooms: 3,
-    built_area: 280,
-    location: "Punta del Este",
-    main_image: "/images/placeholders/urban-penthouse.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Vistas", "Lujo"]
-  },
-  {
-    id: 3,
-    title: "Chacra en José Ignacio",
-    price: 3800000,
-    currency: "USD",
-    bedrooms: 6,
-    bathrooms: 5,
-    built_area: 600,
-    location: "José Ignacio",
-    main_image: "/images/placeholders/farm-ranch.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Naturaleza", "Privacidad"]
-  },
-  {
-    id: 4,
-    title: "Casa de Playa Moderna",
-    price: 1800000,
-    currency: "USD",
-    bedrooms: 4,
-    bathrooms: 4,
-    built_area: 350,
-    location: "Manantiales",
-    main_image: "/images/placeholders/beach-house.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Playa", "Surf"]
-  },
-  {
-    id: 5,
-    title: "Residencia del Golf",
-    price: 2100000,
-    currency: "USD",
-    bedrooms: 4,
-    bathrooms: 5,
-    built_area: 400,
-    location: "Golf",
-    main_image: "/images/placeholders/golf-estate.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Golf", "Seguridad"]
-  },
-  {
-    id: 6,
-    title: "Apartamento Premium",
-    price: 950000,
-    currency: "USD",
-    bedrooms: 2,
-    bathrooms: 2,
-    built_area: 120,
-    location: "Peninsula",
-    main_image: "/images/placeholders/modern-apartment.jpg",
-    status: "en_venta",
-    lifestyle_tags: ["Céntrico", "Inversión"]
-  }
-];
+import { createClient } from "@/utils/supabase/client";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = createClient();
+  const { data: properties } = await supabase
+    .from("properties")
+    .select("*, location:locations(*)")
+    .eq("status", "for_sale")
+    .order("boost_level", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  // Fallback if DB is empty or error (though we just seeded)
+  const displayProperties = (properties || []).map((p: any) => ({
+    ...p,
+    // Ensure numbers are numbers, not null
+    built_area: p.built_area || 0,
+    bedrooms: p.bedrooms || 0,
+    bathrooms: p.bathrooms || 0,
+    price: p.price || 0,
+    boost_level: p.boost_level || 1,
+    // Ensure strings/arrays
+    currency: p.currency || 'USD',
+    main_image: p.main_image || '/images/placeholders/luxury-villa.jpg', // Fallback image
+    images: p.images || [],
+    lifestyle_tags: p.lifestyle_tags || [],
+    // Flatten location name if available
+    location: p.location?.name || 'Punta del Este'
+  }));
+
   return (
     <main className="flex flex-col min-h-screen bg-background text-foreground">
       {/* 1. HERO SECTION - Cinematic */}
@@ -102,14 +47,14 @@ export default function Home() {
 
       {/* 3. FEATURED PROPERTIES - Bento Grid */}
       <BentoGrid
-        properties={FEATURED_PROPERTIES}
+        properties={displayProperties}
         title="Propiedades Destacadas"
         subtitle="Selección curada de propiedades exclusivas en Punta del Este"
       />
 
       {/* 4. MAP WITH LISTINGS - Interactive */}
       <MapWithListings
-        properties={FEATURED_PROPERTIES}
+        properties={displayProperties}
         title="Explora en el Mapa"
         subtitle="Encuentra propiedades por ubicación en Punta del Este"
       />

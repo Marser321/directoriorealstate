@@ -56,6 +56,27 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
     }
 
+    // Protect Admin Routes
+    if (pathname.startsWith('/admin')) {
+        if (!user) {
+            return NextResponse.redirect(new URL('/partners/login', request.url))
+        }
+
+        // Check if user is admin
+        // Note: In a real production app with high traffic, we might want to cache this 
+        // in a custom session claim or cookie to avoid a DB hit on every request.
+        // For now, a direct DB check is the most secure and simple approach.
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile?.is_admin) {
+            return NextResponse.redirect(new URL('/', request.url))
+        }
+    }
+
     // Redirect authenticated users away from login/registro if already logged in
     if (isPublicPartnerRoute && user && (pathname === '/partners/login' || pathname === '/partners/registro')) {
         return NextResponse.redirect(new URL('/partners/dashboard', request.url))

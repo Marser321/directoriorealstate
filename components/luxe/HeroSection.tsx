@@ -4,6 +4,7 @@ import { motion, useTransform, MotionValue } from 'framer-motion';
 import { Search, Sparkles } from 'lucide-react';
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CanvasSequenceAnimator } from './CanvasSequenceAnimator';
 import { GoldenDust } from './GoldenDust';
 
@@ -67,6 +68,7 @@ function HeroContent({
     searchQuery: string;
     setSearchQuery: (q: string) => void;
 }) {
+    const router = useRouter();
     // Opacity animation: Fade out as user starts scrolling (0 to 0.1)
     const contentOpacity = useTransform(scrollProgress, [0, 0.08], [1, 0]);
     const navOpacity = useTransform(scrollProgress, [0, 0.1], [1, 0.8]); // Nav stays visible but dims slightly
@@ -80,6 +82,32 @@ function HeroContent({
 
     // Transform for Hero Text: Move up and fade out
     const textY = useTransform(scrollProgress, [0, 0.1], [0, -100]);
+
+    const handleSearch = () => {
+        if (searchQuery.trim()) {
+            router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
+    const handleLifestyleClick = (tag: string) => {
+        // Map display tags to URL/DB values if needed, for now using direct values or simple mapping
+        // 'Vista al Mar' -> 'waterfront'
+        const tagMap: Record<string, string> = {
+            'Vista al Mar': 'waterfront',
+            'Golf & Country': 'golf',
+            'Sunset Views': 'sunset',
+            'Chacras Privadas': 'farm',
+            'Frente al Lago': 'lake'
+        };
+        const value = tagMap[tag] || tag.toLowerCase();
+        router.push(`/search?lifestyles=${value}`);
+    };
 
     return (
         <>
@@ -96,18 +124,36 @@ function HeroContent({
                     </Link>
 
                     <div className="hidden md:flex items-center gap-8">
-                        {['Propiedades', 'Mapa', 'Inmobiliarias'].map((item) => (
-                            <Link
-                                key={item}
-                                href={`/${item.toLowerCase()}`}
-                                className="text-white/90 hover:text-[#D4AF37] transition-colors font-medium text-sm tracking-wide drop-shadow-sm"
-                            >
-                                {item}
-                            </Link>
-                        ))}
-                        <button className="btn-luxe px-6 py-2.5 rounded-full text-white font-bold text-sm tracking-wide shadow-lg hover:shadow-[#D4AF37]/20 border border-white/20 backdrop-blur-sm hover:bg-white/10 transition-all">
-                            Publicar
-                        </button>
+                        <Link
+                            href="/search"
+                            className="text-white/90 hover:text-[#D4AF37] transition-colors font-medium text-sm tracking-wide drop-shadow-sm"
+                        >
+                            Propiedades
+                        </Link>
+                        <Link
+                            href="/search?mode=map"
+                            className="text-white/90 hover:text-[#D4AF37] transition-colors font-medium text-sm tracking-wide drop-shadow-sm"
+                        >
+                            Mapa
+                        </Link>
+                        <Link
+                            href="/partners"
+                            className="text-white/90 hover:text-[#D4AF37] transition-colors font-medium text-sm tracking-wide drop-shadow-sm"
+                        >
+                            Inmobiliarias
+                        </Link>
+                        <Link
+                            href="/search?type=temporary"
+                            className="text-white/90 hover:text-[#D4AF37] transition-colors font-medium text-sm tracking-wide drop-shadow-sm"
+                        >
+                            Temporal
+                        </Link>
+
+                        <Link href="/partners/registro">
+                            <button className="btn-luxe px-6 py-2.5 rounded-full text-white font-bold text-sm tracking-wide shadow-lg hover:shadow-[#D4AF37]/20 border border-white/20 backdrop-blur-sm hover:bg-white/10 transition-all">
+                                Publicar
+                            </button>
+                        </Link>
                     </div>
                 </nav>
             </motion.header>
@@ -167,11 +213,15 @@ function HeroContent({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 placeholder="¿Buscas un ático con vista al mar?"
                                 className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-white placeholder:text-white/60 text-lg py-3"
                             />
                         </div>
-                        <button className="btn-luxe px-8 py-3 rounded-full text-white font-semibold text-lg hover:scale-105 transition-transform">
+                        <button
+                            onClick={handleSearch}
+                            className="btn-luxe px-8 py-3 rounded-full text-white font-semibold text-lg hover:scale-105 transition-transform"
+                        >
                             Buscar
                         </button>
                     </div>
@@ -187,6 +237,7 @@ function HeroContent({
                     {['Vista al Mar', 'Golf & Country', 'Sunset Views', 'Chacras Privadas', 'Frente al Lago'].map((tag, i) => (
                         <button
                             key={tag}
+                            onClick={() => handleLifestyleClick(tag)}
                             className="px-4 py-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-sm text-white/90 font-medium hover:bg-white/20 hover:border-[#D4AF37]/50 transition-all cursor-pointer shadow-lg"
                         >
                             {tag}
